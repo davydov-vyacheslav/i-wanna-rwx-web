@@ -1,0 +1,39 @@
+# Local only: no proxy, no TLS.
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rwx}
+      POSTGRES_USER: ${POSTGRES_USER:-rwx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rwx-local}
+    volumes:
+      # postgres 18 images keep data under /var/lib/postgresql
+      - pgdata:/var/lib/postgresql
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-rwx}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-rwx}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-rwx-local}
+    ports:
+      - "127.0.0.1:8080:8080"
+    # no healthcheck: the JRE image has no curl/wget
+    mem_limit: 1g
+    restart: unless-stopped
+
+volumes:
+  pgdata:

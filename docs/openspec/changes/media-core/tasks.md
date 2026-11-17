@@ -1,0 +1,28 @@
+# Tasks: media-core
+Prerequisite: `mock-user` B1-B3 and B6 merged (`CurrentUserProvider`, test kit). The contract and V001 already carry the create request, the media fields and the error responses. Tracks are otherwise independent; the frontend develops against generated types plus an injected fetch.
+
+## Backend track (backend-dev, `backend/`)
+- [ ] B1 Verify V001 for media (no new migration): `ddl-auto=validate` context test; SQL test: primary key `(user_id, id)` (same `id` under two users allowed), tombstoned plus live row with the same `external_id`/`isbn`/draft title allowed, two live rows fail, movie 1396 as `movie` and `tv` coexist, movie rating 10.0 accepted. V001 intentionally has no CHECK tying `season_count`/`tv_status` to type `tv`; that invariant is enforced by `MediaValidator` (service level, see B4), not by SQL.
+- [ ] B2 Module `sync`: `UserWriteLock` (row lock on `users`). Verify: Testcontainers test: two concurrent transactions for one user serialize (second waits for the first commit), two users do not block each other; rows written under the lock by 50 concurrent transactions of one user have `change_seq` increasing in commit order.
+- [ ] B3 Books persistence: entity, scoped repository, mapper, `BookService.create/patch/get/list/delete` (version in service, `updatedAt` via `Clock`, no-op detection that skips the UPDATE, tombstone -> Gone, idempotent delete, re-POST of the same id), no controller. Verify: service tests on real Postgres: create -> v1; changed patch -> v2 and later `updatedAt`; identical patch -> v1 and unchanged `change_seq`; delete -> v2 hidden from list and `change_seq` advanced; patch after delete -> Gone.
+- [ ] B4 `MediaValidator` (section 4) and immutable-field rule for sync upserts. Verify: table-driven unit test covering every rule, incl. draft invariants, rating caps (book 5, movie 10) and blank description -> null.
+- [ ] B5 Book duplicate detection (normalized `isbn`, `externalId`, draft title NFC/case/trim) under the per-user lock, `DuplicateException(existingId)`. Verify: tests for each rule; own id not a duplicate; real item not blocked by a same-title draft; two threads adding the same `externalId` yield exactly one success and one 409.
+- [ ] B6 `BookController implements BooksApi`, problem+json mapping for 400/404/409/410 with `code`, `errors`, `existingId`. Verify: MockMvc tests for every status code in the contract, 201 vs 200 on re-POST.
+- [ ] B7 Movies: persistence + service + validator + duplicates (type-aware key, draft vs title) + controller. Same verification as B3-B6 for movies, plus `seasonCount` only for tv and TMDb id collision (movie 1396 and tv 1396 coexist).
+- [ ] B8 Isolation suite: using the mock-user kit, user B GET/PATCH/DELETE on A's ids -> 404, POST of A's id by B creates B's own row and A's is untouched, lists disjoint, same UUID in two users OK. Plus the repository-scope architecture test. Verify: `./gradlew test`.
+- [ ] B9 Published `MediaMutations` for `offline-sync` (apply upsert/delete with base version; applied/noop/rejected with reason and conflict flag; same service path as REST). Verify: tests: stale base version -> applied with conflict flag and LWW values; tombstoned -> rejected `gone`; foreign id -> rejected `not_found`; changed `externalId` -> rejected `immutable_field`.
+- [ ] B10 Review readiness: `ModularityTests` green (media -> identity, sync only); Javadoc on `package-info`. Verify: test.
+
+## Frontend track (frontend-dev, `frontend/`)
+- [ ] F1 Pure logic with unit tests: `filters.ts`, `sort.ts`, `search.ts`, `counts.ts`, `duplicates.ts`, `sourceUrl.ts` (cases from the media spec filters section and scenarios, incl. ru/uk titles and mixed case, draft source URL). Verify: `npm test`.
+- [ ] F2 Dexie v2 stores `books`, `movies`; `repository.ts` write-through seam (`createX`, `updateX`, `deleteX`) + list hooks with background refresh; offline write -> error result. Verify: tests with fake-indexeddb and injected fetch: cache survives reload, refresh replaces cache, 409 duplicate handled.
+- [ ] F3 Persisted list state (`useListState('books')`): filters + sort + search, localStorage per user and list, corrupt value -> default. Verify: unit tests incl. default seen=exclude and badge count.
+- [ ] F4 Books list screen: card (content per media spec), header count "shown of total", empty state, favorite/seen toggles (PATCH), delete via swipe or menu, description sheet (tap), cover link. Verify: Testing Library tests for count text, toggles calling the repository, eye button hiding an item under the default filter.
+- [ ] F5 Filter sheet + sort menu (tri-state rows, reset to default, type selector hidden for books, ended filter for series). Verify: tests for cycle order, series->movie resets ended, badge number.
+- [ ] F6 Movies list screen reusing F4/F5 components (type icon, TV meta line from the fields that exist, type filter). Verify: tests for TV meta text and type filter.
+- [ ] F7 Add sheet shell with draft creation (min 3 chars hint, "Can't find ...?" section, in-library check using `findDuplicate`), provider slot left empty for media-search. Verify: tests: draft creates a `planned` item without `externalId`; duplicate title disables it.
+- [ ] F8 Navigation: tab bar with Books / Movies (two taps to any list), safe-area, 44pt targets. Verify: render test + manual iOS-sized viewport check noted in the PR.
+
+## Review
+- [ ] R1 (code-reviewer) Isolation (`user_id` everywhere, 404 rule), lock ordering, no unscoped repository methods, client never bypasses the repository seam.
+- [ ] R2 (ux-reviewer) Lists, sheets, touch targets.

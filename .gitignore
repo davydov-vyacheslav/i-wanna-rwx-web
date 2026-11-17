@@ -1,0 +1,35 @@
+# OS / IDE
+.DS_Store
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Backend (Gradle)
+backend/.gradle/
+backend/build/
+backend/out/
+backend/bin/
+backend/src/main/resources/static/
+!backend/gradle/wrapper/gradle-wrapper.jar
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/src/api/schema.d.ts
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+
+# Local env / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# Misc
+*.log
+.claude/settings.local.json

@@ -1,0 +1,6 @@
+# Local compose database only; production gets everything from SPRING_DATASOURCE_* env.
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rwx
+    username: rwx
+    password: rwx

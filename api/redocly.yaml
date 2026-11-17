@@ -1,0 +1,9 @@
+extends:
+  - recommended
+
+rules:
+  # revisit when identity-github-oauth lands
+  operation-4xx-response: off
+  security-defined: off
+  # private project, no license
+  info-license: off

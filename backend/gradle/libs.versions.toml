@@ -1,0 +1,11 @@
+[versions]
+spring-boot = "4.1.2"
+spring-modulith = "2.1.2"
+openapi-generator = "7.27.0"
+
+[libraries]
+spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+openapi-generator = { id = "org.openapi.generator", version.ref = "openapi-generator" }

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>RWX prototypes</title>
+<style>
+:root{--bg:#F2F2F7;--s:#fff;--t:#111114;--t2:#5A5A62;--a:#C2410C;--sep:#D4D4DA}
+@media (prefers-color-scheme:dark){:root{--bg:#000;--s:#1C1C1E;--t:#F5F5F7;--t2:#A3A3AB;--a:#FB923C;--sep:#3A3A3E}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:16px;max-width:560px;margin:auto}
+h1{font-size:28px;margin:8px 0}h2{font-size:13px;text-transform:uppercase;letter-spacing:.3px;color:var(--t2);margin:24px 4px 6px}
+p{color:var(--t2)}ul{list-style:none;margin:0;padding:0;background:var(--s);border-radius:12px;overflow:hidden}
+li+li{border-top:.5px solid var(--sep)}
+li{display:flex;align-items:center;gap:8px;min-height:48px;padding:4px 16px;flex-wrap:wrap}
+li>span{flex:1;min-width:140px}a{color:var(--a);font-weight:600;display:inline-flex;align-items:center;min-height:44px;padding:0 6px;text-decoration:none}
+</style>
+</head>
+<body>
+<h1>RWX prototypes</h1>
+<p>Open on a phone (or a 390px-wide window). Each row opens the same screen in light, dark, Russian or Ukrainian. Tap through: heart, eye, swipe a card left, filters, sort, add (+).</p>
+<div id="out"></div>
+<script>
+const rows=[
+['Core',[['Books list','books'],['Movies list (movie / series toggle)','movies'],['Item detail (description)','books/detail:b1'],['Filter sheet (tri-state)','books/filters'],['Movies filter sheet','movies/filters'],['Sort menu','books/sort'],['Add book sheet (type "dune")','books/add'],['Add movie sheet (type "dune")','movies/add'],['Settings','settings']]],
+['List states',[['Empty library','books~empty'],['Loading','books~loading'],['Offline','books~offline'],['Sync pending','books~pending'],['Sync error','books~syncerror'],['Load error','books~error']]],
+['Add sheet states',[['Offline (drafts only)','books~offline/add'],['No TMDb key','movies~notoken/add'],['Provider error (type "dune")','books~error/add']]],
+['Settings states',[['Normal','settings'],['TMDb key missing','settings~notoken'],['Push denied','settings~denied'],['Not installed on Home Screen','settings~notinstalled'],['Push not asked yet','settings~ask'],['Offline','settings~offline']]]];
+const v=[['Light','?theme=light'],['Dark','?theme=dark'],['RU','?lang=ru'],['UK','?lang=uk']];
+document.getElementById('out').innerHTML=rows.map(([h,l])=>`<h2>${h}</h2><ul>${l.map(([n,hash])=>`<li><span>${n}</span>${v.map(([x,q])=>`<a href="app.html${q}#${hash}">${x}</a>`).join('')}</li>`).join('')}</ul>`).join('');
+</script>
+</body>
+</html>

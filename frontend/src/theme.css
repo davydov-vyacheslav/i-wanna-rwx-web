@@ -1,0 +1,66 @@
+/* Design tokens: the single source for colour values. Spec and rationale: docs/design/design-system.md.
+   Also linked by docs/design/prototypes/app.html (browsers skip the Tailwind at-rules). */
+
+:root {
+  --bg:#F2F2F7; --surface:#FFFFFF; --surface-2:#E9E9EE; --text:#111114; --text-2:#5A5A62;
+  --separator:#D4D4DA; --accent:#C2410C; --on-accent:#FFFFFF; --accent-soft:#FDEBDD;
+  --planned:#1D4ED8; --planned-bg:#E3EBFD; --seen:#166534; --seen-bg:#DDF3E4;
+  --danger:#B91C1C; --danger-bg:#FBE4E4; --warn:#8A3F06; --warn-bg:#FDF0CF;
+  --fav:#DC2626; --star:#D97706; --draft:#6B6B73; --scrim:rgba(0,0,0,.4); --tab-bg:rgba(249,249,251,.88);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) {
+    --bg:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E; --text:#F5F5F7; --text-2:#A3A3AB;
+    --separator:#3A3A3E; --accent:#FB923C; --on-accent:#1A0E02; --accent-soft:#3A2412;
+    --planned:#93B4FF; --planned-bg:#1B2A52; --seen:#86E0A3; --seen-bg:#15321F;
+    --danger:#FCA5A5; --danger-bg:#431818; --warn:#FCD34D; --warn-bg:#3A2D06;
+    --fav:#F87171; --star:#FBBF24; --draft:#9A9AA3; --scrim:rgba(0,0,0,.6); --tab-bg:rgba(28,28,30,.88);
+  }
+}
+/* prototypes only (forces a theme via data-theme); remove with docs/design/prototypes */
+:root[data-theme=dark] {
+  --bg:#000000; --surface:#1C1C1E; --surface-2:#2C2C2E; --text:#F5F5F7; --text-2:#A3A3AB;
+  --separator:#3A3A3E; --accent:#FB923C; --on-accent:#1A0E02; --accent-soft:#3A2412;
+  --planned:#93B4FF; --planned-bg:#1B2A52; --seen:#86E0A3; --seen-bg:#15321F;
+  --danger:#FCA5A5; --danger-bg:#431818; --warn:#FCD34D; --warn-bg:#3A2D06;
+  --fav:#F87171; --star:#FBBF24; --draft:#9A9AA3; --scrim:rgba(0,0,0,.6); --tab-bg:rgba(28,28,30,.88);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--text);
+  --color-ink-2: var(--text-2);
+  --color-separator: var(--separator);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-planned: var(--planned);  --color-planned-bg: var(--planned-bg);
+  --color-seen: var(--seen);        --color-seen-bg: var(--seen-bg);
+  --color-danger: var(--danger);    --color-danger-bg: var(--danger-bg);
+  --color-warn: var(--warn);        --color-warn-bg: var(--warn-bg);
+  --color-fav: var(--fav);  --color-star: var(--star);  --color-draft: var(--draft);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --text-title: 30px;        --text-title--line-height: 36px;
+  --text-detail: 22px;       --text-detail--line-height: 28px;
+  --text-sheet: 17px;        --text-sheet--line-height: 22px;
+  --text-input: 16px;        --text-input--line-height: 22px;
+  --text-body: 15px;         --text-body--line-height: 20px;
+  --text-foot: 13px;         --text-foot--line-height: 18px;
+  --text-chip: 12px;         --text-chip--line-height: 16px;
+  --text-tab: 11px;          --text-tab--line-height: 12px;
+
+  --radius-sm: 8px; --radius-md: 12px; --radius-card: 16px; --radius-sheet: 24px;
+  --shadow-fab: 0 6px 18px rgba(0,0,0,.27);
+  --shadow-sheet: 0 -8px 30px rgba(0,0,0,.2);
+  --ease-sheet: cubic-bezier(.32,.72,0,1);
+}
+
+@utility pt-safe { padding-top: env(safe-area-inset-top); }
+@utility pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+@utility px-safe {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}

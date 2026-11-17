@@ -1,0 +1,10 @@
+**/node_modules
+**/build
+**/.gradle
+.git
+frontend/dist
+frontend/src/api/schema.d.ts
+backend/src/main/resources/static
+.env
+.env.*
+!.env.example
