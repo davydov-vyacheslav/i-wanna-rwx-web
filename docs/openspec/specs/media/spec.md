@@ -1,5 +1,7 @@
 # media Specification
 
+> Phasing note: offline behaviour in this spec (cached list, outbox, Undo through the outbox, pending-sync indicators, offline drafts) is delivered by `offline-sync` in the Offline/PWA phase. `media-core` ships online-first: the same rules run over the list fetched from the API, with no Dexie cache or outbox, and delete has no Undo until then.
+
 ## Purpose
 Personal lists of books and of movies/TV series ("inbox" of things to read or watch), plus the filtering, sorting, search-in-list and counts that apply to them. Items are added from a provider search result (see the search capability) or as a manual draft. Visuals: `docs/design/`. Schema: `backend/src/main/resources/db/migration/V001__initial_schema.sql`. Contract: `api/openapi.yaml`.
 

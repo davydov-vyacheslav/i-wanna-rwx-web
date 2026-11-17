@@ -13,6 +13,6 @@ Responsibilities:
 - Design the OpenAPI contract before any implementation. Keep it the single source of truth for server interfaces and the TS client.
 - Keep Spring Modulith boundaries clean: modules talk through published APIs/events, never through each other's repositories.
 - Design sync for iOS PWA limits (no Background Sync, evictable IndexedDB, server authoritative, mutation outbox, idempotent writes with client-generated UUIDs, version-based LWW).
-- Security: per-user data isolation on every query, encrypted secrets at rest, passkey and GitHub OAuth auth flows.
+- Security: per-user data isolation on every query, encrypted secrets at rest, GitHub OAuth auth flow.
 
 Output: concise design docs with trade-offs and a recommendation, and task breakdowns small enough for one implementer each. Don't write production code.

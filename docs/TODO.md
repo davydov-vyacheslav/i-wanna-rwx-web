@@ -6,22 +6,24 @@ Sources of truth: `backend/.../db/migration/V001__initial_schema.sql` for the sc
 
 ## Start of Phase 1
 
-- Commit the Phase 0 state (owner).
-- First CI run (former skeleton I4): push to GitHub, `actionlint` clean, all four jobs green.
-- Manual end-to-end check (former skeleton I5, owner): compose up, `GET /actuator/health` is 200 `UP`, the app shell loads. Record the result in `docs/openspec/changes/archive/project-skeleton/design.md` section 11.
-- Confirm the session cookie name `SESSION` in the contract against the Spring Session config when identity lands.
+- After the full deployment / PWA phase (owner): iPhone checks (OAuth redirect return in an installed PWA, safe-area gutters on a device, dark mode), ru/uk locale check, offline "Can't reach the server" state (see `docs/dev-notes.md`).
+- Fail-fast on empty `RWX_GITHUB_CLIENT_ID` / `RWX_GITHUB_CLIENT_SECRET` has no automated test yet.
 
 ## Decisions to rethink later
 
+- **Explicit `CookieSerializer`.** Try dropping the bean in favour of Boot properties (`server.servlet.session.cookie.*`, `spring.session.*`), decided by a `@SpringBootTest(webEnvironment = RANDOM_PORT)` test asserting the `SESSION` cookie flags (HttpOnly, SameSite=Lax, Max-Age 30d) on the real embedded server.
 - **Key storage and encryption.** For now no encryption and no `user_secrets`: the TMDb key stays in `external_data_source_configuration` (`apiKey`) as is; token status is derived (in-memory `rejected`, else `unknown`). Rethink after seeing how it behaves: AES-GCM with versioned keys. `CLAUDE.md`, `ROADMAP.md` and the `search` spec still say the key is encrypted; reconcile then. Never log keys either way. The license key is returned to its owner and stored encrypted (reminders spec).
-- Identity: GitHub redirect endpoints and dev-login are not in the contract (postponed with `identity-github-oauth`, which adds only the Spring Session tables).
 
 ## Open product questions
 
 All questions from the specs were answered on 2026-11-17 and recorded in the specs ("Decisions (formerly open)"). Still open:
 
-- Passkeys and account recovery are on hold (parked, phase 9); the owner is still deciding.
 - Extra data sources (Goodreads, OMDb were rejected earlier).
+
+## Push (future phases)
+
+- Re-add the `push_subscriptions` table (removed from V001 for now because nothing uses it; by then V001 may be frozen, so it becomes a new migration): `id uuid pk`, `user_id` FK to `users` ON DELETE CASCADE, `endpoint text` unique, `p256dh`, `auth`, `created_at`, index on `user_id`; and add a media/push row to the account-deletion cascade test.
+- Implement push subscriptions fully (phase 6): `PushSubscriptionEntity`/repository in the push module, `POST/DELETE /push-subscriptions`, VAPID key endpoint, and the rule from the settings spec: disabling push in Settings (`PATCH /settings pushNotificationsEnabled=false`) deletes all of the user's subscriptions in the same request (the push module listens to an identity event or exposes a published API; identity has no push code now, the table cascades with the user).
 
 ## Design
 
@@ -40,4 +42,8 @@ All questions from the specs were answered on 2026-11-17 and recorded in the spe
 - Service worker caching of covers and CSP `img-src` for `covers.openlibrary.org` and `image.tmdb.org` (Phase 5).
 - Optional: Java healthcheck for the compose `app` service (image has no curl); not needed for k3s probes.
 - Revisit one Gradle project vs sub-projects only if build time hurts; router choice is deferred to the first feature change.
-- `SecurityContextCurrentUserProvider` replaces the mock provider when `identity-github-oauth` lands; the skeleton Dexie db `rwx` becomes per-user (`rwx-<userId>`) with `mock-user`.
+- CI version numbering: derive the version automatically on push (from `git describe` / tags, or the run number) and stamp it on the image tag and in the app (backend build info, shown in the UI footer or Settings).
+- Publish images (backend + frontend, one image) to GitHub Container Registry from CI on pushes to `main`.
+- A second compose file for stable testing that pulls the images from GHCR instead of building local sources (local compose keeps building).
+- The `sending cache export` line in the CI log is only the buildx `gha` cache export; no action.
+- Low priority hardening: expose the actuator on a separate management port (not reachable through the public ingress).

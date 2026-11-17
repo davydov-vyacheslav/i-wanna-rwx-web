@@ -1,5 +1,7 @@
 # offline-sync Specification
 
+> Phasing note: delivered in the Offline/PWA phase (roadmap phase 5), after `identity-github-oauth`, `media-core` and `media-search`; until then clients are online-first and the `/sync/*` endpoints are unused.
+
 Offline-first behaviour for the iOS-limited PWA: no Background Sync, evictable IndexedDB, server authoritative. The client keeps a cache and a mutation outbox; filters, sort and UI state are device-local and not synced.
 
 Facts follow `V001__initial_schema.sql` and `api/openapi.yaml`. Synced resource types are `book`, `movie`, `subscription`, `license`. `POST /api/v1/sync/push` and `GET /api/v1/sync/pull` are in the contract (server handlers and the client engine are the `offline-sync` change); plain REST CRUD remains the first online path.

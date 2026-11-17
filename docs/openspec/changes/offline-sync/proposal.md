@@ -1,5 +1,7 @@
 # Change: offline-sync
 
+Phase: Offline/PWA (roadmap phase 5). It is no longer part of the next-in-order sequence (`identity-github-oauth`, `media-core`, `media-search`); `media-core` and `media-search` ship online-first and leave a thin `repository.ts` seam for this change.
+
 ## Why
 The PWA must work offline on iOS (no Background Sync, evictable IndexedDB). Server is authoritative; the client keeps a cache and an outbox of mutations.
 
@@ -14,7 +16,7 @@ The PWA must work offline on iOS (no Background Sync, evictable IndexedDB). Serv
 - Target behaviour in `docs/openspec/specs/offline-sync/spec.md`.
 
 ## Impact
-Remaining work is server handlers and jobs, and the whole client side (Dexie cache, outbox, sync engine, recovery). Plain REST CRUD stays as the first online path; sync handlers reuse the same services.
+Remaining work is server handlers and jobs, and the whole client side (Dexie cache, outbox, sync engine, recovery). Moved here from `media-core`/`media-search`: the media Dexie stores, the repository bodies that write cache + outbox, offline drafts, offline banners, pending-sync dots, Undo through the outbox, the Dexie cache of search sources, and the backend `MediaMutations` published API used by `/sync/push`. The `/sync/*` endpoints and tables in the contract and V001 are used from this phase on. Plain REST CRUD stays as the first online path; sync handlers reuse the same services.
 
 ## Non-goals
 Field-level merge/CRDT, background sync, multi-record transactions. The contract and V001 already carry what this change needs (see resolved points in design).

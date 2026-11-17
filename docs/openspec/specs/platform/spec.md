@@ -38,7 +38,7 @@ The Spring jar SHALL serve the built frontend from `/` and fall back to `index.h
 - **THEN** the response is 404 `application/problem+json`
 
 ### Requirement: Schema management
-Flyway SHALL apply migrations on startup, starting from the baseline `V001__initial_schema.sql`; migrations SHALL be append-only (applied files are never edited); Hibernate SHALL only validate the schema, never generate it.
+Flyway SHALL apply migrations on startup, starting from the baseline `V001__initial_schema.sql`; `V001` MAY be edited in place until the first deploy (no `V002` before then); from the first deploy on, migrations SHALL be append-only (applied files are never edited); Hibernate SHALL only validate the schema, never generate it.
 
 #### Scenario: Fresh database
 - **WHEN** the app starts against an empty database

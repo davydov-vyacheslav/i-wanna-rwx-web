@@ -3,54 +3,32 @@
 Who the acting user is, how they authenticate, and how their data is isolated.
 
 ## Status
-- Implementation order: mock mode first (change `mock-user`), real GitHub OAuth later (change `identity-github-oauth`, postponed by owner decision). Requirements below are tagged `[mock]`, `[github]` or `[future]`; only `[mock]` and the untagged ones are in scope now.
-- Schema facts follow `V001__initial_schema.sql`: `users` holds only id and timestamps (plus `disabled_at`); display name, login and avatar live in `credentials.data`; timezone and locale live in `user_settings`. Contract facts follow `api/openapi.yaml` (`GET`/`PATCH /api/v1/me`, `/settings` and `POST /api/v1/auth/logout` exist; the GitHub redirect endpoints and dev-login are not in the contract yet).
+- Delivered by change `identity-github-oauth` (archived). There is no mock user, no dev login and no authentication bypass anywhere, including local development; local dev uses a real GitHub OAuth App. Tests authenticate through a test-only helper under `src/test` (see "Test authentication").
+- Schema facts follow `V001__initial_schema.sql`: `users` holds only id and timestamps (plus `disabled_at`); display name, login and avatar live in `credentials.data`; timezone and locale live in `user_settings`. Contract facts follow `api/openapi.yaml` (`/auth/github/callback`; the login starts at Spring's `/oauth2/authorization/github`, outside the contract;, `/auth/logout`, `GET`/`PATCH`/`DELETE /me`, `GET /me/export`, `/settings`).
 
 ## Requirements
 
 ### Requirement: Current user abstraction
-Domain modules SHALL obtain the acting user only through the published `CurrentUserProvider` (user id, IANA timezone) and SHALL NOT read user or credential storage or authentication configuration. When there is no user, the provider SHALL signal not-authenticated, mapped to a 401 problem response.
-
-#### Scenario: Provider swap
-- **WHEN** the mock provider is replaced by the OAuth provider
-- **THEN** no media or reminders code changes
+Domain modules SHALL obtain the acting user only through the published `CurrentUserProvider` (user id, IANA timezone), resolved from the security context on every call, and SHALL NOT read user or credential storage or authentication configuration. When there is no user, the provider SHALL signal not-authenticated, mapped to a 401 problem response.
 
 #### Scenario: No user
-- **WHEN** a request has no resolvable user
-- **THEN** the response is 401 `application/problem+json`
+- **WHEN** a request has no session
+- **THEN** the response is 401 `application/problem+json` and no handler runs
 
-### Requirement: Mock user mode [mock]
-Until real authentication exists, the system SHALL run with `rwx.auth.mode=mock`, which resolves every request to one fixed user (id `00000000-0000-0000-0000-000000000001`) created on startup if absent; migrations SHALL NOT seed it. Any mode value other than `mock` or `github` SHALL fail startup, and `github` SHALL fail startup as not implemented until the OAuth change lands.
-
-#### Scenario: First start
-- **WHEN** the app starts in mock mode on an empty database
-- **THEN** exactly one mock user exists and every request acts as that user
-
-#### Scenario: Repeated start
-- **WHEN** the app restarts in mock mode
-- **THEN** no second mock user is created
-
-### Requirement: Mock mode safety guard [mock]
-Mock mode SHALL refuse to start under profile `prod`, `k8s` or `production`, with no override; otherwise it SHALL start only under profile `dev` or `test`, or when `rwx.auth.mock.allowed=true`. Active mock mode SHALL log a startup warning and the current-user endpoint SHALL report `authMode` so the client can show a visible badge. The Helm chart SHALL NOT set the override.
-
-#### Scenario: Production profile
-- **WHEN** mode is mock and profile `prod` is active, even with `allowed=true`
-- **THEN** startup fails with a message naming `rwx.auth.mode`
-
-#### Scenario: Bare jar
-- **WHEN** the jar starts with no profile and no `RWX_AUTH_MOCK_ALLOWED`
-- **THEN** startup fails
-
-#### Scenario: Local compose
-- **WHEN** Docker Compose starts the app, which sets `SPRING_PROFILES_ACTIVE=dev` (a profile in the allowed set, so the guard passes; `RWX_AUTH_MOCK_ALLOWED` is not set)
-- **THEN** the app starts in mock mode
+#### Scenario: Module independence
+- **WHEN** media or reminders need the user id
+- **THEN** they call `CurrentUserProvider` only and never import identity internals
 
 ### Requirement: Current user endpoint
-`GET /api/v1/me` SHALL return the user id, display name, avatar URL (nullable) and `authMode`. The endpoint SHALL be added to `api/openapi.yaml` before implementation.
+`GET /api/v1/me` SHALL return the user id, display name (GitHub name, falling back to the login), avatar URL (nullable), `timeZone` and `locale` (nullable). `PATCH /api/v1/me` SHALL update `timeZone` and `locale` (the same stored values as `/settings`).
 
-#### Scenario: Mock mode
-- **WHEN** the client calls `GET /api/v1/me` in mock mode
-- **THEN** the response has the mock user id and `authMode` equal to `mock`
+#### Scenario: Signed in
+- **WHEN** a signed-in client calls `GET /api/v1/me`
+- **THEN** the response has the user's id, GitHub login and avatar URL
+
+#### Scenario: Signed out
+- **WHEN** the client calls `GET /api/v1/me` without a valid session
+- **THEN** the response is 401 and the client shows the login screen
 
 ### Requirement: User timezone and locale
 A user SHALL have an IANA timezone (default `UTC`) and an optional locale (`en`, `ru`, `uk` by device locale), stored in `user_settings` and changed via `PATCH /api/v1/settings` (`timeZone`, `locale`). A timezone not in the JDK zone list SHALL be rejected with 400 and leave the stored value unchanged. A change SHALL publish `UserTimezoneChanged(userId, old, new)`, which reminders consumes to recompute notification times. The client SHALL send its resolved device timezone on app open only when it differs from the cached value.
@@ -61,7 +39,7 @@ A user SHALL have an IANA timezone (default `UTC`) and an optional locale (`en`,
 
 #### Scenario: Zone change
 - **WHEN** the user changes timezone
-- **THEN** `UserTimezoneChanged` is published and identity does not call reminders directly
+- **THEN** `UserTimezoneChangedEvent` is published and identity does not call reminders directly
 
 ### Requirement: Per-user data isolation
 Every user-owned table SHALL carry `user_id` and every query SHALL be scoped by it; repositories of user data SHALL expose only user-scoped finders. Accessing another user's record SHALL return 404, never 403. Every module SHALL have an integration test with two users (A and B) that exercises each endpoint with B against A's resource ids and expects 404 without data leakage.
@@ -84,7 +62,7 @@ The client SHALL keep local data in a database named per user id (`rwx-<userId>`
 - **THEN** B sees none of A's cached records
 
 ### Requirement: Users and credentials
-The system SHALL model a user separately from its credentials; a user SHALL be able to own multiple credentials of type `github`, `passkey` or `dev`; a credential SHALL be unique by (type, external id). Credential `data` SHALL hold identity metadata only (login, avatar, passkey public key and sign count) and is not encrypted. A user with `disabled_at` set SHALL NOT be able to log in.
+The system SHALL model a user separately from its credentials; a user SHALL be able to own multiple credentials, currently only of type `github` (the schema CHECK allows nothing else); a credential SHALL be unique by (type, external id). Credential `data` SHALL hold identity metadata only (login, avatar) and is not encrypted. A user with `disabled_at` set SHALL NOT be able to log in, and existing sessions of that user SHALL stop authenticating (401).
 
 #### Scenario: Second credential
 - **WHEN** a logged-in user links another credential
@@ -98,26 +76,30 @@ The system SHALL model a user separately from its credentials; a user SHALL be a
 - **WHEN** a new credential has a profile matching an existing user
 - **THEN** it is not linked automatically
 
-### Requirement: GitHub OAuth login [github]
-The system SHALL authenticate users with the GitHub OAuth authorization code flow (scope `read:user` only) with `state` and PKCE held in the pre-auth session, identifying the user by the immutable numeric GitHub id, never the login. The GitHub access token SHALL NOT be stored. The first successful login SHALL create the user and a `github` credential for any GitHub account: sign-up is open. An optional allow-list MAY be enabled by configuration for private deployments; it is off by default.
+### Requirement: GitHub OAuth login
+The system SHALL authenticate users with the GitHub OAuth authorization code flow (scope `read:user` only) with `state` held in the pre-auth session (confidential client; PKCE is on by Spring's default but not required), identifying the user by the immutable numeric GitHub id, never the login. The GitHub access token SHALL NOT be stored. The first successful login SHALL create the user and a `github` credential for any GitHub account: sign-up is open, there is no allow-list or invitation. After a successful login the browser SHALL be redirected to `/`.
 
 #### Scenario: First login
 - **WHEN** an unknown GitHub id completes the flow
 - **THEN** a user and a `github` credential are created and a session starts
 
-#### Scenario: Not allow-listed (only when the optional allow-list is enabled)
-- **WHEN** an unknown GitHub id outside the allow-list completes the flow
-- **THEN** no user is created, no session starts and the user sees a not-invited message
+#### Scenario: Disabled account
+- **WHEN** a known GitHub id whose user is disabled completes the flow
+- **THEN** no session starts and the browser is redirected to the generic `/login?error`
 
-#### Scenario: Bad state or PKCE
-- **WHEN** the callback `state` or PKCE verifier does not match
-- **THEN** the login is rejected with 400 and no session is created
+#### Scenario: Any other login failure
+- **WHEN** the user cancels at GitHub, the callback `state` is missing, wrong or replayed, or GitHub fails
+- **THEN** no session is created and the browser is redirected to `/login?error`; there are no distinct reasons and no 400
+
+#### Scenario: Forged callback while signed in
+- **WHEN** a failing callback arrives with a signed-in session cookie
+- **THEN** that session stays valid
 
 #### Scenario: Renamed GitHub account
 - **WHEN** a known GitHub id logs in with a new login name
 - **THEN** the same user is used and the credential metadata is updated
 
-### Requirement: Sessions and CSRF [github]
+### Requirement: Sessions and CSRF
 The system SHALL use server-side sessions (Spring Session JDBC) with an opaque id in an HttpOnly, SameSite=Lax cookie (Secure except on localhost), 30-day rolling idle timeout. Mutating requests SHALL require a CSRF token (double-submit, header `X-XSRF-TOKEN`); safe GET requests SHALL NOT. The API is same-origin, so CORS SHALL NOT be enabled.
 
 #### Scenario: Missing CSRF token
@@ -129,28 +111,36 @@ The system SHALL use server-side sessions (Spring Session JDBC) with an opaque i
 - **THEN** the session stays valid
 
 ### Requirement: Logout
-`POST /api/v1/auth/logout` SHALL invalidate the session and return 204. In mock mode it SHALL be a no-op returning 204.
+`POST /api/v1/auth/logout` SHALL invalidate the session and return 204. It SHALL expire the `SESSION` cookie and be idempotent: without a valid session it also returns 204.
 
 #### Scenario: Logout
 - **WHEN** the user logs out
 - **THEN** the session id no longer authenticates and the client returns to the sign-in screen
 
-### Requirement: Dev login [github]
-A dev login (`POST /auth/dev-login`, credential type `dev`) MAY exist for tests and local use only under profile `dev`, SHALL fail startup if enabled with a non-localhost base URL, and SHALL NOT exist (404) in any other profile.
+### Requirement: Login page and home
+The SPA SHALL show, to a signed-out visitor, a login page with a single "Sign in with GitHub" button (strings in en, ru, uk by device locale) that navigates the browser to `/oauth2/authorization/github`; a `/login?error` return SHALL show one generic failure message. After login a temporary home page SHALL show the user's GitHub login, the avatar when present, and a Logout button; the Books list of `media-core` replaces this page.
 
-#### Scenario: Production
-- **WHEN** the app runs without the `dev` profile
-- **THEN** `/auth/dev-login` does not exist (404)
+#### Scenario: Signed-out visit
+- **WHEN** `GET /me` returns 401
+- **THEN** only the login page is shown, with no other navigation
 
-### Requirement: Passkeys [future]
-Passkeys SHALL be added as a second credential type on the existing credential model, with registration from Settings, without migrating users. Out of scope until phase 9.
+#### Scenario: Signed-in visit
+- **WHEN** `GET /me` returns the user
+- **THEN** the home page shows the GitHub login and a Logout button, and the per-user local database `rwx-<userId>` is opened
 
-#### Scenario: Add passkey later
-- **WHEN** passkeys ship
-- **THEN** a user can sign in with GitHub or a passkey and keeps the same user id
+#### Scenario: Logout
+- **WHEN** the user taps Logout
+- **THEN** `POST /auth/logout` is called, the per-user database handle is closed, cached queries are cleared and the login page is shown
+
+### Requirement: Test authentication
+Automated tests SHALL authenticate without any production bypass: a helper under `src/test` creates a user, a `github` credential, a `user_settings` row and a real session (or security context) directly through the identity module's test fixtures. No production class, profile, property or endpoint SHALL exist for logging in without GitHub.
+
+#### Scenario: No bypass
+- **WHEN** the production jar runs with any profile
+- **THEN** the only way to obtain a session is the GitHub callback
 
 ### Requirement: Account data export and deletion
-A signed-in user SHALL be able to delete the account (`DELETE /api/v1/me`, from Settings with a confirmation); the user and all of the user's data SHALL be deleted (cascade), push subscriptions removed, and the session ended. Deletion is permanent. In mock mode there is no session: `DELETE /me` wipes all data of the mock user, keeps the fixed user row (or lazily recreates it on the next request) and returns 204. Before that, the user SHALL be able to export all own data (`GET /api/v1/me/export`, from Settings): a machine-readable JSON download of the profile, settings, books, movies, subscriptions and licenses (license keys included, since it is the owner's own data and the request is authenticated), live records only; it never includes the TMDb key or session data. The export is a data-portability duty of open sign-up, not a media feature.
+A signed-in user SHALL be able to delete the account (`DELETE /api/v1/me`, from Settings with a confirmation); the user and all of the user's data SHALL be deleted (cascade), push subscriptions removed, and the session ended. Deletion is permanent. Before that, the user SHALL be able to export all own data (`GET /api/v1/me/export`, from Settings): a machine-readable JSON download of the profile, settings, books, movies, subscriptions and licenses (license keys included, since it is the owner's own data and the request is authenticated), live records only; it never includes the TMDb key or session data. The export is a data-portability duty of open sign-up, not a media feature.
 
 #### Scenario: Export
 - **WHEN** the user requests the export
@@ -158,7 +148,4 @@ A signed-in user SHALL be able to delete the account (`DELETE /api/v1/me`, from 
 
 #### Scenario: Delete account
 - **WHEN** the user confirms account deletion
-- **THEN** the response is 204, every row of the user is gone, and later requests with the old session are 401 (mock mode: 204, all data gone, the next request acts as the same fixed user with empty data)
-
-## Open questions
-- Passkeys and account recovery are on hold (parked, phase 9); the owner is still deciding.
+- **THEN** the response is 204, every row of the user is gone, and later requests with the old session are 401

@@ -1,5 +1,5 @@
 # Tasks: media-search
-Prerequisites: `mock-user` B1-B3, B6 merged; frontend add flow needs `media-core` F2 and F7 (the create contract is in `api/openapi.yaml`); F6 uses `PATCH /movies/{id}` for `seasonCount`/`tvStatus`. Backend tasks need no media-core code and no migration (V001 has `external_data_source_configuration`). Provider calls are stubbed with WireMock using recorded real responses in `src/test/resources/providers/`; this is the only allowed stub (external HTTP).
+Prerequisites: `identity-github-oauth` B1-B3, B6 merged; frontend add flow needs `media-core` F2 and F7 (online-first, no Dexie) (the create contract is in `api/openapi.yaml`); F6 uses `PATCH /movies/{id}` for `seasonCount`/`tvStatus`. Backend tasks need no media-core code and no migration (V001 has `external_data_source_configuration`). Provider calls are stubbed with WireMock using recorded real responses in `src/test/resources/providers/`; this is the only allowed stub (external HTTP).
 
 ## Backend track (backend-dev, `backend/`)
 - [ ] B1 Provider HTTP foundation: `RestClient` config (timeouts, UA, no redirects, body cap), `RateLimiter` buckets, concurrency guard, problem mapping per design section 6. Verify: WireMock tests for timeout -> 504, 500 -> 502, 429 -> 503 + Retry-After, oversized body -> 502; limiter test: 31st search in a minute -> 429 with `Retry-After`.
@@ -13,7 +13,7 @@ Prerequisites: `mock-user` B1-B3, B6 merged; frontend add flow needs `media-core
 - [ ] F2 Add sheet provider search UI (after media-core F7): picker only when >1 provider, "Searching in ..." line, result rows (cover 60x70, type icon, year/dash, rating/"N/A", author/"No author", in-library check via `findDuplicate`), spinner, empty state, 3 s error toast. Verify: Testing Library tests per search-spec scenario.
 - [ ] F3 Add-from-result flow : books best-effort details; movies details with Retry / "Add without details"; create via the media repository; 409 duplicate handling. Verify: tests for details failure on book (still added) and on TV (toast + retry), duplicate adopts `existingId`.
 - [ ] F4 Settings "Sources" screen: status per source from `/search/sources`, key form (write-only, masked placeholder when saved, no reveal), save/delete, per-`code` error text, key help link. Verify: tests: saved state never shows a value; 422 shows "wrong API key"; delete removes TMDb from the add sheet.
-- [ ] F5 Offline behaviour: sources cached in Dexie `meta`; offline add sheet shows drafts only with a hint. Verify: test with failing fetch and cached sources.
+- [ ] F5 Offline-tolerant sources: when `/search/sources` fails, the add sheet shows drafts only with a hint (no persistence; the Dexie `meta` cache of sources is deferred to `offline-sync`). Verify: test with failing fetch.
 - [ ] F6 TV refresh action in the movies list menu per design section 8. Verify: tests: unchanged -> no write; ongoing -> ended -> one write; null status ignored; 429 backs off; `tmdb_token_invalid` stops with a toast.
 
 ## Review
