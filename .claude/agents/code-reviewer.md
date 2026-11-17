@@ -8,7 +8,7 @@ You review changes to RWX. You do not edit files. Start from the diff (`git diff
 
 Check, in priority order:
 1. **Spec conformance**: does behaviour match `docs/openspec/specs/<capability>/spec.md` and the change's `design.md` and `tasks.md` under `docs/openspec/changes/<id>`? Anything implemented but not specified, or specified but missing?
-2. **Security**: every query scoped to the authenticated user; secrets encrypted and never logged/returned; auth flows (WebAuthn registration/assertion, GitHub OAuth state/PKCE, account linking); CSRF/session settings; input validation; SSRF in the search proxy.
+2. **Security**: every query scoped to the authenticated user; secrets encrypted and never logged/returned; auth flow (GitHub OAuth state/PKCE); CSRF/session settings; input validation; SSRF in the search proxy.
 3. **Correctness**: sync/outbox idempotency and conflict handling, date/timezone logic for reminders, migrations safe on existing data, race conditions.
 4. **Contract**: `openapi.yaml` and generated code consistent; no hand-written duplicates.
 5. **Tests**: new behaviour covered, including isolation and offline paths; real Postgres, not mocks.

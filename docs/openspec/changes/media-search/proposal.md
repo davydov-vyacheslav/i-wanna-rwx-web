@@ -9,7 +9,7 @@ Items are added from Open Library (books) and TMDb (movies/TV). Browsers must no
 - Frontend: add sheet with provider search, in-library marks, add-from-result flow, TV refresh action, Settings sources screen.
 
 ## Impact
-Capabilities `search`, `settings` (deltas). No migration: V001 already has the table. New env: `RWX_SEARCH_CONTACT`. Depends on `mock-user`; the frontend add flow depends on `media-core` F2 and F7. The create call and the TV refresh write path are in the contract.
+Capabilities `search`, `settings` (deltas). No migration: V001 already has the table. New env: `RWX_SEARCH_CONTACT`. Depends on `identity-github-oauth`; the frontend add flow depends on `media-core` F2 and F7. The create call and the TV refresh write path are in the contract.
 
 ## Non-goals
 Encryption of the key at rest (deferred by the owner: the key is stored as is in `api_key`, `api_key_version` stays null; add AES-GCM later), `crypto` module and `user_secrets`, server-created library items from search (the client composes search + details + create), result caching across users, TMDb locale (Phase 8), export.

@@ -12,9 +12,13 @@ Java 25, Spring Boot 4, Gradle (Kotlin DSL), Spring Modulith, PostgreSQL + JPA +
 - Specs captured from iOS carry a `## Open questions` section: places where iOS behaviour is ambiguous or looks like a bug. They MUST be resolved (decision recorded in the spec) before the capability is implemented.
 - Dates in reminders are calendar dates (`LocalDate`), instants are UTC; the user's IANA timezone is stored server-side.
 - All user data is scoped by `user_id` on every query.
+- Published module events are named with an `Event` suffix (`UserTimezoneChangedEvent`).
+
+## Schema
+`V001__initial_schema.sql` is edited in place until the first deploy (no `V002` before then; it includes the Spring Session JDBC tables). From the first deploy on, Flyway migrations are append-only.
 
 ## Capabilities (current iOS behaviour, adapted)
 media, search, reminders, identity, settings, offline-sync, platform (target behaviour of the PWA; iOS is a reference only)
 
 ## Pending changes
-In implementation order: `mock-user`, `media-core`, `media-search`, `offline-sync`. `project-skeleton` is archived. `identity-github-oauth` is postponed (it replaces the mock user later). Schema (`V001`) and `api/openapi.yaml` are the source of truth; change docs must be aligned to them (see `docs/TODO.md`).
+In implementation order: `media-core`, `media-search`. `offline-sync` belongs to the Offline/PWA phase (roadmap phase 5), not to this sequence. `project-skeleton` and `identity-github-oauth` are archived. There is no mock user or dev login anywhere; tests authenticate through a test-only helper. Schema (`V001`) and `api/openapi.yaml` are the source of truth; change docs must be aligned to them (see `docs/TODO.md`).

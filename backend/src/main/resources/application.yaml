@@ -14,6 +14,25 @@ spring:
   mvc:
     problemdetails:
       enabled: true
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            # an empty id or secret fails startup; GitHub's endpoints come from Spring's built-in github provider
+            client-id: ${RWX_GITHUB_CLIENT_ID:}
+            client-secret: ${RWX_GITHUB_CLIENT_SECRET:}
+            scope: read:user
+            redirect-uri: "{baseUrl}/api/v1/auth/github/callback"
+  session:
+    # tables come from V001
+    jdbc:
+      initialize-schema: never
+    timeout: 30d
+
+server:
+  # behind Traefik: lets the session cookie get Secure from X-Forwarded-Proto, plain http on localhost
+  forward-headers-strategy: framework
 
 management:
   endpoints:

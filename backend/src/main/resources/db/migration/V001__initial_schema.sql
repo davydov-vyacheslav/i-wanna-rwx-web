@@ -29,7 +29,7 @@ CREATE TABLE users (
 );
 
 -- ============================================================================
--- credentials: Login credentials (GitHub, passkey, dev)
+-- credentials: Login credentials (GitHub)
 -- ============================================================================
 CREATE TABLE credentials (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -40,7 +40,7 @@ CREATE TABLE credentials (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   last_used_at timestamptz,
-  CONSTRAINT valid_type CHECK (type IN ('github', 'passkey', 'dev')),
+  CONSTRAINT valid_type CHECK (type IN ('github')),
   CONSTRAINT unique_credential UNIQUE (type, external_id)
 );
 
@@ -242,31 +242,45 @@ CREATE TABLE applied_mutations (
 CREATE INDEX idx_applied_mutations_created_at ON applied_mutations(created_at);
 
 -- ============================================================================
--- push_subscriptions: Web Push subscriptions (one per browser endpoint)
+-- Spring Session JDBC (spring-session-jdbc 4.1.1, schema-postgresql.sql, verbatim).
+-- Not user-owned data: sessions reference users only by PRINCIPAL_NAME.
+-- Used with spring.session.jdbc.initialize-schema=never; Hibernate does not map these.
+-- On a Spring Boot upgrade that bumps spring-session, diff against the new jar's DDL.
 -- ============================================================================
-CREATE TABLE push_subscriptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  endpoint text NOT NULL,
-  p256dh text NOT NULL,
-  auth text NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT now(),
-  CONSTRAINT unique_push_endpoint UNIQUE (endpoint)
+CREATE TABLE SPRING_SESSION (
+	PRIMARY_ID CHAR(36) NOT NULL,
+	SESSION_ID CHAR(36) NOT NULL,
+	CREATION_TIME BIGINT NOT NULL,
+	LAST_ACCESS_TIME BIGINT NOT NULL,
+	MAX_INACTIVE_INTERVAL INT NOT NULL,
+	EXPIRY_TIME BIGINT NOT NULL,
+	PRINCIPAL_NAME VARCHAR(100),
+	CONSTRAINT SPRING_SESSION_PK PRIMARY KEY (PRIMARY_ID)
 );
 
-CREATE INDEX idx_push_subscriptions_user_id ON push_subscriptions(user_id);
+CREATE UNIQUE INDEX SPRING_SESSION_IX1 ON SPRING_SESSION (SESSION_ID);
+CREATE INDEX SPRING_SESSION_IX2 ON SPRING_SESSION (EXPIRY_TIME);
+CREATE INDEX SPRING_SESSION_IX3 ON SPRING_SESSION (PRINCIPAL_NAME);
+
+CREATE TABLE SPRING_SESSION_ATTRIBUTES (
+	SESSION_PRIMARY_ID CHAR(36) NOT NULL,
+	ATTRIBUTE_NAME VARCHAR(200) NOT NULL,
+	ATTRIBUTE_BYTES BYTEA NOT NULL,
+	CONSTRAINT SPRING_SESSION_ATTRIBUTES_PK PRIMARY KEY (SESSION_PRIMARY_ID, ATTRIBUTE_NAME),
+	CONSTRAINT SPRING_SESSION_ATTRIBUTES_FK FOREIGN KEY (SESSION_PRIMARY_ID) REFERENCES SPRING_SESSION(PRIMARY_ID) ON DELETE CASCADE
+);
 
 -- ============================================================================
 -- Table & Column Comments
 -- ============================================================================
 
 COMMENT ON TABLE users IS 'User account identity. Created on first successful credential authentication. Display name and avatar from credentials/session only.';
-COMMENT ON COLUMN users.disabled_at IS 'Soft-disable timestamp. If set, user cannot log in. For future audit/recovery.';
+COMMENT ON COLUMN users.disabled_at IS 'Soft-disable timestamp. If set, user cannot log in. For future audit.';
 
-COMMENT ON TABLE credentials IS 'Login credentials. Supports GitHub OAuth, passkey (future), dev (testing). Contains identity data: display_name, avatar_url (not stored in users table).';
-COMMENT ON COLUMN credentials.type IS 'Credential type. CHECK: github, passkey, dev.';
-COMMENT ON COLUMN credentials.external_id IS 'External identifier: GitHub numeric ID, passkey WebAuthn credential id (base64url, not the RP id), or dev name. Unique per type.';
-COMMENT ON COLUMN credentials.data IS 'Credential metadata (JSONB). GitHub: login, avatar_url, name. Passkey: public key, sign count, algorithms. Never encrypted (identity data).';
+COMMENT ON TABLE credentials IS 'Login credentials. Supports GitHub OAuth; one row per credential, so other types can be added by relaxing the CHECK. Contains identity data: display_name, avatar_url (not stored in users table).';
+COMMENT ON COLUMN credentials.type IS 'Credential type. CHECK: github.';
+COMMENT ON COLUMN credentials.external_id IS 'External identifier: GitHub numeric ID. Unique per type.';
+COMMENT ON COLUMN credentials.data IS 'Credential metadata (JSONB). GitHub: login, avatar_url, name. Never encrypted (identity data).';
 COMMENT ON COLUMN credentials.last_used_at IS 'Timestamp of last successful authentication with this credential.';
 
 COMMENT ON TABLE books IS 'User book library. Notes from Open Library API (search results only, no full text). Duplicate rules (media spec): same isbn, same external_id, or a draft with the same trimmed case-insensitive title, among live rows. A draft title that equals the title of a non-draft item, and Unicode NFC normalization of titles, cannot be an index and are checked by the service under the per-user write lock; the draft-vs-draft case is also enforced by uq_books_user_draft_title.';
@@ -320,7 +334,4 @@ COMMENT ON COLUMN external_data_source_configuration.api_key IS 'The key as subm
 COMMENT ON COLUMN external_data_source_configuration.api_key_version IS 'Reserved for a future AES-GCM key version. NULL while api_key is stored as is.';
 
 COMMENT ON TABLE applied_mutations IS 'Server-side idempotency log of /sync/push: status, reason, existing id and version per (user_id, mutation_id) so a retried push returns the same outcome. The row never stores the record (it could contain a license key in clear): on replay the server rebuilds the record from the live row. Purged after 30 days. The mutation outbox itself lives on the client (IndexedDB), there is no server outbox table.';
-COMMENT ON TABLE push_subscriptions IS 'Web Push subscriptions per user. endpoint is unique; re-registering an endpoint reassigns it to the caller. Keys are never returned to clients.';
 COMMENT ON COLUMN applied_mutations.result IS 'Replayable outcome: only status, conflict, reason, existingId and version. Never the record body: it may hold a license key, and replay rebuilds the record from the live row (a tombstone for a deleted row).';
-COMMENT ON COLUMN push_subscriptions.p256dh IS 'Client public key (base64url) for payload encryption.';
-COMMENT ON COLUMN push_subscriptions.auth IS 'Client auth secret (base64url). Never logged or returned.';

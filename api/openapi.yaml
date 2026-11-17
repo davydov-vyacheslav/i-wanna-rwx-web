@@ -7,7 +7,7 @@ info:
     Server interfaces are generated (openapi-generator); TS client types are generated (openapi-typescript).
     OpenAPI-first: never hand-duplicate API contracts.
 
-    Authentication: an opaque session cookie (see the cookieAuth scheme). With `rwx.auth.mode=mock` (local dev and tests) every request acts as one fixed user and no login or cookie is needed; `GET /me` reports `authMode`. The GitHub login redirects are added by the change identity-github-oauth.
+    Authentication: GitHub OAuth only. A successful login sets the opaque session cookie `SESSION` (see the cookieAuth scheme); every endpoint except the GitHub login redirects (the browser starts at Spring's `/oauth2/authorization/github`, which is not part of this contract, and returns on `/auth/github/callback`) and the actuator probes needs it, otherwise the response is 401. CSRF: every mutating request (POST, PUT, PATCH, DELETE) must carry the header `X-XSRF-TOKEN` with the value of the readable `XSRF-TOKEN` cookie (double-submit); a missing or wrong token is 403 with code `csrf` and nothing changes. GET requests need no token. The API is same-origin, so there is no CORS.
 
 servers:
   - url: /
@@ -683,15 +683,56 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/auth/github/callback:
+    get:
+      tags: [auth]
+      operationId: githubLoginCallback
+      summary: GitHub login callback
+      description: |
+        Registered as the OAuth App callback URL (local dev: `http://localhost:8080/api/v1/auth/github/callback`). Browser navigation (the login starts at `/oauth2/authorization/github`, served by Spring Security and outside this contract). Validates `state`, exchanges the code server-side with the client secret, finds or creates the user (open sign-up), starts the session and sets the `SESSION` cookie. The GitHub access token is discarded.
+        Success: 302 to `/`. Any failure (user cancelled, account disabled, bad or missing `state`, GitHub error) is one generic 302 to `/login?error` with no reason; no session is started.
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          description: Set by GitHub when the user denies access
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the SPA (`/` on success, `/login?error` on any failure)
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri-reference
+            Set-Cookie:
+              schema:
+                type: string
+              description: SESSION cookie on success only
+
   /api/v1/auth/logout:
     post:
       tags: [auth]
       operationId: logout
       summary: Logout and clear session
-      description: Invalidates the session. A no-op returning 204 in mock mode.
+      description: Invalidates the session server-side, expires the `SESSION` cookie and returns 204. Idempotent, so without a valid session it also returns 204 (the client can always call it to reach a clean state). Needs the CSRF header when a session exists.
       responses:
         '204':
           description: Logged out
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   # ===== ME =====
   /api/v1/me:
@@ -1159,6 +1200,7 @@ components:
             invalid_timezone (/me and /settings: zone not in the IANA list),
             duplicate (409 on create, see existingId),
             gone (410, the id was deleted),
+            csrf (403, missing or invalid X-XSRF-TOKEN on a mutating request),
             cursor_expired (410 on GET /sync/pull, the cursor is older than the 90-day tombstone retention; do a full pull),
             immutable_field, tmdb_token_missing, tmdb_token_invalid, tmdb_token_rejected,
             push_not_configured, provider_error, provider_rate_limited, provider_timeout, rate_limited.
@@ -1764,22 +1806,18 @@ components:
     # ===== ME =====
     Me:
       type: object
-      required: [id, displayName, authMode, timeZone]
+      required: [id, displayName, timeZone]
       properties:
         id:
           type: string
           format: uuid
         displayName:
           type: string
-          description: From the credential metadata (login or name)
+          description: From the credential metadata (GitHub name, falling back to the login)
         avatarUrl:
           type: string
           format: uri
           nullable: true
-        authMode:
-          type: string
-          enum: [mock, github]
-          description: mock shows a visible badge in the client
         timeZone:
           type: string
           description: IANA timezone (default UTC)
@@ -2135,6 +2173,13 @@ components:
           schema:
             $ref: '#/components/schemas/Problem'
 
+    Forbidden:
+      description: Forbidden (code csrf - missing or invalid X-XSRF-TOKEN; nothing changed)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
     NotFound:
       description: Not found
       content:
@@ -2220,9 +2265,8 @@ components:
       in: cookie
       name: SESSION
       description: |
-        Opaque server-side session id (Spring Session JDBC, HttpOnly, SameSite=Lax), set by the login flow of identity-github-oauth.
-        Mutating requests also need the CSRF header X-XSRF-TOKEN (double-submit) once that change lands.
-        In mock mode (rwx.auth.mode=mock) no cookie or login is needed.
+        Opaque server-side session id (Spring Session JDBC, HttpOnly, SameSite=Lax, Secure except on localhost), set by the GitHub login callback; 30-day rolling idle timeout.
+        Mutating requests also need the CSRF header X-XSRF-TOKEN (double-submit with the readable XSRF-TOKEN cookie); a missing or wrong token is 403 `csrf`.
 
 security:
   - cookieAuth: []

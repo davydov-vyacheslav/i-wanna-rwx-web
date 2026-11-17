@@ -5,5 +5,7 @@ rules:
   # revisit when identity-github-oauth lands
   operation-4xx-response: off
   security-defined: off
+  # the GitHub login endpoints answer with 302 redirects only
+  operation-2xx-response: off
   # private project, no license
   info-license: off

@@ -23,8 +23,8 @@ Liveness and readiness: `/actuator/health/liveness`, `/actuator/health/readiness
 
 ## Phase 1 entry points
 
-- Backend: follow the pending changes in order (see `docs/openspec/project.md`): `mock-user`, `media-core`, `media-search`, `offline-sync`.
-- Frontend: apply the Tailwind 4 tokens from `docs/design/design-system.md`, build screens from its components section and the prototype, then Dexie cache and the mutation outbox (`offline-sync`).
+- Backend: follow the pending changes in order (see `docs/openspec/project.md`): `identity-github-oauth`, `media-core`, `media-search` (`offline-sync` comes with the Offline/PWA phase).
+- Frontend: apply the Tailwind 4 tokens from `docs/design/design-system.md`, build screens from its components section and the prototype, online-first; the Dexie cache and the mutation outbox (`offline-sync`) come with the Offline/PWA phase.
 - Every behavioural change starts as a proposal under `docs/openspec/changes/` (see `CLAUDE.md`).
 
 ## Open items

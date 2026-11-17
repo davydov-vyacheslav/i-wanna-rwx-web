@@ -58,9 +58,10 @@
   --ease-sheet: cubic-bezier(.32,.72,0,1);
 }
 
-@utility pt-safe { padding-top: env(safe-area-inset-top); }
-@utility pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+/* Safe-area insets added to the 16px page gutter (design system: page gutter 16). */
+@utility pt-safe { padding-top: calc(env(safe-area-inset-top) + 1rem); }
+@utility pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 1rem); }
 @utility px-safe {
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  padding-left: calc(env(safe-area-inset-left) + 1rem);
+  padding-right: calc(env(safe-area-inset-right) + 1rem);
 }
