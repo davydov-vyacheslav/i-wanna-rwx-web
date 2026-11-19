@@ -5,12 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.javanix.rwx.identity.internal.persistence.CredentialRepository;
 import com.javanix.rwx.identity.internal.persistence.UserRepository;
-import com.javanix.rwx.identity.internal.persistence.UserSettingsRepository;
 import com.javanix.rwx.identity.security.UserPrincipal;
 import com.javanix.rwx.testkit.IntegrationTest;
 import com.javanix.rwx.testkit.TestUsers;
-import java.time.Instant;
-import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -28,7 +25,6 @@ class CurrentUserProviderTests {
     @Autowired CredentialRepository credentials;
     @Autowired TestUsers users;
     @Autowired UserRepository userRepository;
-    @Autowired UserSettingsRepository settings;
 
     @AfterEach
     void clear() {
@@ -36,17 +32,12 @@ class CurrentUserProviderTests {
     }
 
     @Test
-    void returnsPrincipalIdAndStoredTimezoneAndSeesChangesImmediately() {
+    void returnsThePrincipalId() {
         var f = users.two();
         signIn(f.a().id());
-        assertThat(provider.current()).isEqualTo(new CurrentUser(f.a().id(), ZoneId.of("Europe/Berlin")));
+        assertThat(provider.current()).isEqualTo(new CurrentUser(f.a().id()));
         signIn(f.b().id());
-        assertThat(provider.current()).isEqualTo(new CurrentUser(f.b().id(), ZoneId.of("Asia/Tokyo")));
-
-        var row = settings.findByUserId(f.b().id()).orElseThrow();
-        row.update("America/Denver", row.getLocale(), Instant.now());
-        settings.save(row);
-        assertThat(provider.current().timezone()).isEqualTo(ZoneId.of("America/Denver"));
+        assertThat(provider.current()).isEqualTo(new CurrentUser(f.b().id()));
     }
 
     @Test

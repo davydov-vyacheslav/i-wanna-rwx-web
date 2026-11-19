@@ -1,14 +1,8 @@
-import { detectLocale, t, type Locale } from '../../i18n'
+import { t, type Locale } from '../../i18n'
 
 const START_URL = '/oauth2/authorization/github'
 
-export function LoginPage({
-  error,
-  locale = detectLocale(),
-}: {
-  error?: boolean
-  locale?: Locale
-}) {
+export function LoginPage({ error, locale }: { error?: boolean; locale: Locale }) {
   return (
     <main className="pt-safe pb-safe px-safe bg-bg text-ink flex min-h-dvh flex-col items-center justify-center gap-4">
       <h1 className="text-title font-bold">RWX</h1>

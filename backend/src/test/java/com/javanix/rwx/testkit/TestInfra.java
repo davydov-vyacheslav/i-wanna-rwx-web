@@ -1,10 +1,13 @@
 package com.javanix.rwx.testkit;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.javanix.rwx.identity.internal.persistence.CredentialRepository;
 import com.javanix.rwx.identity.internal.persistence.UserRepository;
-import com.javanix.rwx.identity.internal.persistence.UserSettingsRepository;
+import com.javanix.rwx.settings.internal.UserSettingsRepository;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.session.SessionRepository;
 import org.springframework.test.context.DynamicPropertyRegistrar;
@@ -36,10 +39,27 @@ class TestInfra {
         };
     }
 
+    /** Stand-in for openlibrary.org and api.themoviedb.org (external HTTP only); tests reset it and stub what they call. */
+    @Bean(destroyMethod = "stop")
+    WireMockServer providerStub() {
+        var server = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
+        server.start();
+        return server;
+    }
+
+    @Bean
+    DynamicPropertyRegistrar providerEndpoints(WireMockServer providerStub) {
+        return registry -> {
+            registry.add("rwx.datasource.books.open-library.base-url", providerStub::baseUrl);
+            registry.add("rwx.datasource.movies.tmdb.base-url", () -> providerStub.baseUrl() + "/3");
+        };
+    }
+
     @Bean
     TestUsers testUsers(SessionRepository<?> sessions, UserRepository users,
-            CredentialRepository credentials, UserSettingsRepository settings) {
-        return new TestUsers(sessions, users, credentials, settings);
+            CredentialRepository credentials, UserSettingsRepository settings,
+            ApplicationEventPublisher events) {
+        return new TestUsers(sessions, users, credentials, settings, events);
     }
 
     @Bean

@@ -11,4 +11,4 @@ npm run dev                                 # http://localhost:5173, /api and /a
 ```
 
 `src/api/schema.d.ts` is generated from `../api/openapi.yaml` by `npm run api:gen` (run automatically before dev, build, lint, typecheck, test).
-Checks: `npm run lint`, `npm run typecheck`, `npm test -- --run`, `npm run build`.
+Checks: `npm run format:check` (Prettier; `npm run format` rewrites), `npm run lint`, `npm run typecheck`, `npm test -- --run`, `npm run build`.

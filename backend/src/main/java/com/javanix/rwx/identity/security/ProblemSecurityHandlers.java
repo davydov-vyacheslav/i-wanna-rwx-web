@@ -10,7 +10,7 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-/** Filter-chain 401/403 go through MVC's exception resolvers, so {@code ProblemAdvice} is the only place that builds problems. */
+/** Filter-chain 401/403 go through MVC's exception resolvers, so the advice beans (identity's and the common module's) are the only places that build problems. */
 @Component
 class ProblemSecurityHandlers implements AuthenticationEntryPoint, AccessDeniedHandler {
 

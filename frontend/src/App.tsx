@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react'
-import { useMe, useSignedOut, useSyncTimeZone } from './features/identity/useMe'
+import { useMe, useSignedOut } from './features/identity/useMe'
+import { useLocale, useSyncTimeZone } from './features/settings/useSettings'
 import { LoginPage } from './features/identity/LoginPage'
-import { detectLocale, t } from './i18n'
-import { HomePage } from './features/identity/HomePage'
-import { DbProvider } from './db/DbProvider'
+import { t } from './i18n'
+import { SettingsScreen } from './features/settings/SettingsScreen'
 import type { ApiClient } from './api/client'
 
 export default function App({ api }: { api?: ApiClient }) {
   const { me, signedOut: meSignedOut, isError, isPending, refetch, isFetching } = useMe(api)
   const signedOut = useSignedOut() || meSignedOut
-  useSyncTimeZone(signedOut ? undefined : me, api)
-  const locale = detectLocale()
+  const userId = signedOut ? undefined : me?.id
+  useSyncTimeZone(userId, api)
+  const locale = useLocale(api, !!userId)
   // read the one-shot ?error= once, then drop it from the URL
   const [error] = useState(() => new URLSearchParams(window.location.search).has('error'))
   useEffect(() => {
@@ -59,9 +60,12 @@ export default function App({ api }: { api?: ApiClient }) {
   if (signedOut || !me) {
     return <LoginPage error={error} locale={locale} />
   }
+  // the Settings screen is the only signed-in screen until the media lists arrive (Phase 3)
   return (
-    <DbProvider userId={me.id}>
-      <HomePage me={me} api={api} locale={locale} />
-    </DbProvider>
+    <main className="pt-safe pb-safe px-safe bg-bg text-ink min-h-dvh">
+      <div className="mx-auto w-full max-w-xl">
+        <SettingsScreen me={me} api={api} locale={locale} />
+      </div>
+    </main>
   )
 }

@@ -7,12 +7,24 @@ Sources of truth: `backend/.../db/migration/V001__initial_schema.sql` for the sc
 ## Start of Phase 1
 
 - After the full deployment / PWA phase (owner): iPhone checks (OAuth redirect return in an installed PWA, safe-area gutters on a device, dark mode), ru/uk locale check, offline "Can't reach the server" state (see `docs/dev-notes.md`).
+- Check the account data export download (`<a download>` of the JSON blob) on an iPhone, installed PWA and Safari: it may open a share/preview sheet instead of saving (from `settings-screen`).
 - Fail-fast on empty `RWX_GITHUB_CLIENT_ID` / `RWX_GITHUB_CLIENT_SECRET` has no automated test yet.
+
+## Documentation
+
+- Write a representative main `README.md`: what RWX is (product idea, screenshots once the UI exists), feature list, stack, architecture overview, quick start, link to `docs/dev-notes.md` and `docs/ROADMAP.md`. The current one is a developer cheat sheet.
 
 ## Decisions to rethink later
 
 - **Explicit `CookieSerializer`.** Try dropping the bean in favour of Boot properties (`server.servlet.session.cookie.*`, `spring.session.*`), decided by a `@SpringBootTest(webEnvironment = RANDOM_PORT)` test asserting the `SESSION` cookie flags (HttpOnly, SameSite=Lax, Max-Age 30d) on the real embedded server.
-- **Key storage and encryption.** For now no encryption and no `user_secrets`: the TMDb key stays in `external_data_source_configuration` (`apiKey`) as is; token status is derived (in-memory `rejected`, else `unknown`). Rethink after seeing how it behaves: AES-GCM with versioned keys. `CLAUDE.md`, `ROADMAP.md` and the `search` spec still say the key is encrypted; reconcile then. Never log keys either way. The license key is returned to its owner and stored encrypted (reminders spec).
+- **Key storage and encryption.** For now no encryption and no `user_secrets`: data source API keys stay in `user_source_keys.api_key` (V001, `datasource` design 16.2) as is; there is no key status. Rethink after seeing how it behaves: AES-GCM with versioned keys (a key version column would be a new migration after the first deploy). The current `search` spec (renamed `datasource` on archive) still says encrypted in places; the media-search delta says stored as is; reconcile then. Never log keys either way. The license key is returned to its owner and stored encrypted (reminders spec).
+
+## Backend cleanup ideas
+
+- TMDb test fixtures are synthetic (hand-written from the public API v3 docs, `backend/src/test/resources/providers/tmdb/synthetic/`) because recording needs the owner's API key: replace them with recorded real responses once a key is available, and do one live manual check of the TMDb source (search, movie, tv) with the key entered in Settings > Sources. Open Library fixtures are recorded from the real API.
+- `RWX_DATASOURCE_CONTACT` (was `RWX_SEARCH_CONTACT`; properties `rwx.datasource.*`) is required in every profile including `dev` (fail-fast like the GitHub credentials): update your local `deploy/docker/.env`. Revisit if it gets in the way of plain `bootRun`.
+
+- The default data source control in Settings > Sources is built but stays invisible while each type has a single registered source (`datasource` DS-F4); revisit when a second source is added.
 
 ## Open product questions
 
@@ -23,9 +35,11 @@ All questions from the specs were answered on 2026-11-17 and recorded in the spe
 ## Push (future phases)
 
 - Re-add the `push_subscriptions` table (removed from V001 for now because nothing uses it; by then V001 may be frozen, so it becomes a new migration): `id uuid pk`, `user_id` FK to `users` ON DELETE CASCADE, `endpoint text` unique, `p256dh`, `auth`, `created_at`, index on `user_id`; and add a media/push row to the account-deletion cascade test.
-- Implement push subscriptions fully (phase 6): `PushSubscriptionEntity`/repository in the push module, `POST/DELETE /push-subscriptions`, VAPID key endpoint, and the rule from the settings spec: disabling push in Settings (`PATCH /settings pushNotificationsEnabled=false`) deletes all of the user's subscriptions in the same request (the push module listens to an identity event or exposes a published API; identity has no push code now, the table cascades with the user).
+- Implement push subscriptions fully (phase 6): `PushSubscriptionEntity`/repository in the push module, `POST/DELETE /push-subscriptions`, VAPID key endpoint, and the rule from `docs/openspec/changes/push-notifications/`: disabling push in Settings (`PATCH /settings pushNotificationsEnabled=false`, the flag and its column are added in the same phase) deletes all of the user's subscriptions in the same request (the push module listens to an identity event or exposes a published API; identity has no push code now, the table cascades with the user).
 
 ## Design
+
+- App icon: a placeholder is in `frontend/public/` (`icon.svg`: white "RWX" on the accent orange `#C2410C`, rendered once to `apple-touch-icon.png` 180, `icon-192.png`, `icon-512.png`; linked in `index.html` as favicon and apple-touch-icon). Discuss the real design (a drawn mark instead of system-font text, maskable variant with safe zone for Android, dark/tinted iOS variants, splash images) and add the manifest `icons` in the Offline/PWA phase.
 
 - Not designed yet: Reminders, sign-in, install walkthrough (`docs/design/design-system.md`).
 - Movies have no author or director: drop the author line from the movie card in `design-system.md` and the prototype.
@@ -38,7 +52,7 @@ All questions from the specs were answered on 2026-11-17 and recorded in the spe
 - Postgres on k3s: CloudNativePG vs external (PostgreSQL 18 is used now).
 - Helm chart in `deploy/helm/` (Traefik, cert-manager); VAPID keys and DB credentials as Kubernetes Secrets.
 - Runbooks in `docs/runbooks/` once there is a deployment: deploy and rollback, DB restore, push troubleshooting.
-- Rate limiter in `media-search` is in-memory (single replica); move to Postgres/Redis if the chart runs more than one replica.
+- Rate limiter in `datasource` is in-memory (single replica); move to Postgres/Redis if the chart runs more than one replica (`datasource` DS-B16, parked: Bucket4j with its JDBC backend, needs the owner's approval of the dependency).
 - Service worker caching of covers and CSP `img-src` for `covers.openlibrary.org` and `image.tmdb.org` (Phase 5).
 - Optional: Java healthcheck for the compose `app` service (image has no curl); not needed for k3s probes.
 - Revisit one Gradle project vs sub-projects only if build time hurts; router choice is deferred to the first feature change.

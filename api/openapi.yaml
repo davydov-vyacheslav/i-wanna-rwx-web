@@ -16,634 +16,14 @@ servers:
 tags:
   - name: auth
     description: Authentication (GitHub OAuth)
-  - name: books
-    description: Book management (search, add, edit, delete)
-  - name: movies
-    description: Movie & TV show management
-  - name: reminders
-    description: Subscription and license reminders
   - name: settings
     description: User account and preferences
+  - name: data-sources
+    description: The user's data sources per resource type (books, movies and TV), with availability, the chosen default and API keys for sources that need one (write-only, never returned)
   - name: me
     description: Current user
-  - name: search
-    description: Provider search and details (Open Library, TMDb)
-  - name: sync
-    description: Offline sync (mutation push, cursor pull)
-  - name: push
-    description: Web Push subscriptions
 
 paths:
-  # ===== BOOKS =====
-  /api/v1/books:
-    get:
-      tags: [books]
-      operationId: listBooks
-      summary: List user's books
-      description: All live books of the user as a bare array. No filter, sort or paging parameters; the client filters and sorts over its cached full list (media spec).
-      responses:
-        '200':
-          description: List of books
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Book'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags: [books]
-      operationId: createBook
-      summary: Add a book (from a search result or as a draft)
-      description: |
-        The client composes the item (search result plus details) and sends it with a client-generated `id`.
-        No `externalId` means a draft (the title is the typed text, rating 0 or absent).
-        Idempotent by id: a live book with the same id returns 200 with the stored item (the body is ignored; changes go through PATCH).
-        A different id that duplicates a live book (same normalized ISBN, same `externalId`, or a draft with the same trimmed case-insensitive title) returns 409 `duplicate` with `existingId`.
-        An id that was deleted returns 410 `gone` and recreates nothing.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateBookRequest'
-      responses:
-        '200':
-          description: A live book with this id already exists; returned unchanged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Book'
-        '201':
-          description: Book created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Book'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Duplicate'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-  /api/v1/books/{id}:
-    get:
-      tags: [books]
-      operationId: getBook
-      summary: Get book details
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Book details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Book'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    patch:
-      tags: [books]
-      operationId: updateBook
-      summary: Update book status or favorite
-      description: Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateBookRequest'
-      responses:
-        '200':
-          description: Book updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Book'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-    delete:
-      tags: [books]
-      operationId: deleteBook
-      summary: Delete book
-      description: Tombstones the book. Idempotent (deleting a deleted book is 204); an unknown or another user's id is 404.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Book deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ===== MOVIES =====
-  /api/v1/movies:
-    get:
-      tags: [movies]
-      operationId: listMovies
-      summary: List user's movies and TV shows
-      description: All live items of the user as a bare array. No filter, sort or paging parameters; the client filters and sorts over its cached full list (media spec).
-      responses:
-        '200':
-          description: List of movies/shows
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Movie'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags: [movies]
-      operationId: createMovie
-      summary: Add a movie or TV show (from a search result or as a draft)
-      description: |
-        The client composes the item (search result plus details) and sends it with a client-generated `id`.
-        No `externalId` means a draft (type `movie`, title is the typed text, rating 0 or absent).
-        Idempotent by id: a live item with the same id returns 200 with the stored item (the body is ignored; changes go through PATCH).
-        A different id that duplicates a live item (same `type` and `externalId`, or a draft with the same trimmed case-insensitive title) returns 409 `duplicate` with `existingId`.
-        An id that was deleted returns 410 `gone` and recreates nothing.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateMovieRequest'
-      responses:
-        '200':
-          description: A live item with this id already exists; returned unchanged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Movie'
-        '201':
-          description: Movie/show created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Movie'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Duplicate'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-  /api/v1/movies/{id}:
-    get:
-      tags: [movies]
-      operationId: getMovie
-      summary: Get movie or TV show details
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Movie/show details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Movie'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    patch:
-      tags: [movies]
-      operationId: updateMovie
-      summary: Update movie or TV show status, favorite or TV series data
-      description: |
-        `seasonCount` and `tvStatus` are the write path of the TV refresh and are accepted for `tv` items only (400 otherwise).
-        Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMovieRequest'
-      responses:
-        '200':
-          description: Movie/show updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Movie'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-    delete:
-      tags: [movies]
-      operationId: deleteMovie
-      summary: Delete movie or TV show
-      description: Tombstones the item. Idempotent (deleting a deleted item is 204); an unknown or another user's id is 404.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Movie/show deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  # ===== SUBSCRIPTIONS =====
-  /api/v1/subscriptions:
-    get:
-      tags: [reminders]
-      operationId: listSubscriptions
-      summary: List user's subscriptions
-      description: All live subscriptions of the user as a bare array (no filter, sort or paging; the client orders and filters its cached list, reminders spec).
-      responses:
-        '200':
-          description: List of subscriptions
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Subscription'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags: [reminders]
-      operationId: createSubscription
-      summary: Create a subscription
-      description: |
-        The client sends a client-generated `id`. Idempotent by id: a live subscription with the same id returns 200 with the stored record (the body is ignored; changes go through PATCH).
-        A pattern other than `lifetime` needs `expiryDate`, and `custom` needs a positive `customRenewalDays` (400 `validation` otherwise).
-        An id that was deleted returns 410 `gone` and recreates nothing. There is no duplicate rule: two subscriptions may share a name (409 is not returned).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateSubscriptionRequest'
-      responses:
-        '200':
-          description: A live subscription with this id already exists; returned unchanged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '201':
-          description: Subscription created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-  /api/v1/subscriptions/{id}:
-    get:
-      tags: [reminders]
-      operationId: getSubscription
-      summary: Get subscription details
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Subscription details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    patch:
-      tags: [reminders]
-      operationId: updateSubscription
-      summary: Update subscription
-      description: Partial update; absent properties are unchanged. The merged record must satisfy the same rules as create (expiry required except `lifetime`, positive `customRenewalDays` for `custom`; 400 `validation`). Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateSubscriptionRequest'
-      responses:
-        '200':
-          description: Subscription updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-    delete:
-      tags: [reminders]
-      operationId: deleteSubscription
-      summary: Delete subscription
-      description: Tombstones the subscription. Idempotent (deleting a deleted subscription is 204); an unknown or another user's id is 404.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Subscription deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/v1/subscriptions/{id}/renew:
-    post:
-      tags: [reminders]
-      operationId: renewSubscription
-      summary: Renew a subscription (expiry plus one renewal period)
-      description: |
-        Carries the expiry date the client saw (`expectedExpiryDate`). If it equals the current expiry the new expiry is computed and saved (200 with the record); if it differs the call is a no-op and returns the current record with 200 (a stale repeat never renews twice).
-        `lifetime` and `none` are rejected with 400 `validation`. Unknown or another user's id is 404; a deleted id is 410.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RenewRequest'
-      responses:
-        '200':
-          description: Subscription renewed, or unchanged when the expected date was stale
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Subscription'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-
-  # ===== LICENSES =====
-  /api/v1/licenses:
-    get:
-      tags: [reminders]
-      operationId: listLicenses
-      summary: List user's licenses
-      description: All live licenses of the user as a bare array (no filter, sort or paging; the client orders and filters its cached list, reminders spec). The license key is returned to the owner in the response and is never logged.
-      responses:
-        '200':
-          description: List of licenses
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/License'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags: [reminders]
-      operationId: createLicense
-      summary: Create a license
-      description: |
-        The client sends a client-generated `id`. Idempotent by id: a live license with the same id returns 200 with the stored record (the body is ignored; changes go through PATCH).
-        A pattern other than `lifetime` needs `expiryDate`, and `custom` needs a positive `customRenewalDays` (400 `validation` otherwise).
-        An id that was deleted returns 410 `gone` and recreates nothing. There is no duplicate rule: two licenses may share a name (409 is not returned).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CreateLicenseRequest'
-      responses:
-        '200':
-          description: A live license with this id already exists; returned unchanged
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/License'
-        '201':
-          description: License created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/License'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-  /api/v1/licenses/{id}:
-    get:
-      tags: [reminders]
-      operationId: getLicense
-      summary: Get license details
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: License details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/License'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-    patch:
-      tags: [reminders]
-      operationId: updateLicense
-      summary: Update license
-      description: Partial update; absent properties are unchanged. The merged record must satisfy the same rules as create (expiry required except `lifetime`, positive `customRenewalDays` for `custom`; 400 `validation`). Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateLicenseRequest'
-      responses:
-        '200':
-          description: License updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/License'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-    delete:
-      tags: [reminders]
-      operationId: deleteLicense
-      summary: Delete license
-      description: Tombstones the license. Idempotent (deleting a deleted license is 204); an unknown or another user's id is 404.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: License deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-
-  /api/v1/licenses/{id}/renew:
-    post:
-      tags: [reminders]
-      operationId: renewLicense
-      summary: Renew a license (expiry plus one renewal period)
-      description: |
-        Carries the expiry date the client saw (`expectedExpiryDate`). If it equals the current expiry the new expiry is computed and saved (200 with the record); if it differs the call is a no-op and returns the current record with 200 (a stale repeat never renews twice).
-        `lifetime` and `none` are rejected with 400 `validation`. Unknown or another user's id is 404; a deleted id is 410.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RenewRequest'
-      responses:
-        '200':
-          description: License renewed, or unchanged when the expected date was stale
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/License'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '410':
-          $ref: '#/components/responses/Gone'
-
-
   # ===== SETTINGS =====
   /api/v1/settings:
     get:
@@ -663,8 +43,8 @@ paths:
     patch:
       tags: [settings]
       operationId: updateSettings
-      summary: Update settings (timezone, locale, push flag)
-      description: Partial update of the user's single settings record; at least one property is required. An unknown IANA zone is 400 `invalid_timezone`; an empty body or an invalid locale is 400 `validation`. Setting `pushNotificationsEnabled=false` also deletes all of the user's push subscriptions server-side (the client DELETE endpoint remains for single subscriptions). Nothing changes on error.
+      summary: Update settings (timezone, locale)
+      description: Partial update of the user's single settings record; at least one property is required. An unknown IANA zone is 400 `invalid_timezone`; an empty body or an invalid locale is 400 `validation`. Nothing changes on error.
       requestBody:
         required: true
         content:
@@ -750,29 +130,6 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-    patch:
-      tags: [me]
-      operationId: updateMe
-      summary: Update the current user's timezone and locale
-      description: Same stored values as PATCH /settings (user_settings). At least one property is required. An unknown IANA zone is 400 `invalid_timezone`; an empty body or an invalid locale is 400 `validation`. Nothing changes on error.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UpdateMeRequest'
-      responses:
-        '200':
-          description: Current user updated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Me'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
     delete:
       tags: [me]
       operationId: deleteMe
@@ -789,7 +146,7 @@ paths:
       tags: [me]
       operationId: exportMe
       summary: Export all data of the current account
-      description: Machine-readable copy of everything the user owns (profile, settings, books, movies, subscriptions, licenses including license keys) as a JSON download. Live records only (no tombstones). Never includes the TMDb key or session data.
+      description: Machine-readable copy of everything the user owns (profile, settings, chosen default data sources; media and reminders join the export in their phases) as a JSON download. Never includes a data source API key or session data.
       responses:
         '200':
           description: Account data
@@ -805,372 +162,109 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  # ===== SEARCH =====
-  /api/v1/search/books:
+  # ===== DATA SOURCES =====
+  /api/v1/data-sources:
     get:
-      tags: [search]
-      operationId: searchBooks
-      summary: Search books in Open Library (at most 10 hits, audiobooks excluded)
-      parameters:
-        - name: q
-          in: query
-          required: true
-          description: Trimmed query, 3 to 200 characters
-          schema:
-            type: string
-            minLength: 3
-            maxLength: 200
+      tags: [data-sources]
+      operationId: listDataSources
+      summary: List the data sources per resource type with the user's default, availability and whether a key is saved
+      description: |
+        One ordered list per resource type (`books`, `movies`), in the server's configuration order. The configured default of the type is stored for every user at creation; a key row exists only for a saved key.
+        Per source: `isDefault` is the user's stored default (the configured default until the user picks another), exactly one per list; `available` says whether the source is usable by this user now (a source that needs a key is unavailable until the user saves one); `isEffective` marks the one source a search without a `source` parameter uses: the default when it is available, otherwise the first available source in list order, and when none is available the default itself (its search then answers `source_key_missing`). The stored default is never changed by this fallback. A client shows a source selector only when a list has two or more registered sources.
+        No response carries a key or any part of it.
       responses:
         '200':
-          description: Book hits
+          description: Data sources
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/BookSearchHit'
-        '400':
-          $ref: '#/components/responses/BadRequest'
+                $ref: '#/components/schemas/DataSources'
         '401':
           $ref: '#/components/responses/Unauthorized'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '502':
-          $ref: '#/components/responses/BadGateway'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-        '504':
-          $ref: '#/components/responses/GatewayTimeout'
 
-  /api/v1/search/books/{sourceId}:
-    get:
-      tags: [search]
-      operationId: getBookDetails
-      summary: Get Open Library work details
+  /api/v1/data-sources/{resourceType}/{source}/default:
+    put:
+      tags: [data-sources]
+      operationId: setDefaultDataSource
+      summary: Make a source the user's default for its resource type
+      description: |
+        Idempotent. The previous default of this type stops being it; at most one default per user and type. Allowed for any registered source of the type, available or not: an unavailable default is kept and the search falls back to the first available source until the key is saved (`isEffective` in the list). Returns the refreshed lists.
       parameters:
-        - name: sourceId
-          in: path
-          required: true
-          description: Open Library work id, OL<digits>W
-          schema:
-            type: string
-            pattern: '^OL[0-9]+W$'
+        - $ref: '#/components/parameters/DataSourceResourceType'
+        - $ref: '#/components/parameters/DataSourceIdPath'
       responses:
         '200':
-          description: Book details
+          description: Data sources after the change
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BookDetails'
+                $ref: '#/components/schemas/DataSources'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '502':
-          $ref: '#/components/responses/BadGateway'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-        '504':
-          $ref: '#/components/responses/GatewayTimeout'
 
-  /api/v1/search/movies:
-    get:
-      tags: [search]
-      operationId: searchMovies
-      summary: Search movies and TV in TMDb (at most 10 hits, persons dropped)
-      description: Requires the user's TMDb token (409 tmdb_token_missing or tmdb_token_invalid otherwise).
+  /api/v1/data-sources/{resourceType}/{source}/key:
+    put:
+      tags: [data-sources]
+      operationId: saveDataSourceKey
+      summary: Save (or replace) the user's API key for a source that needs one
+      description: |
+        Only for a source that has `requiresKey` (otherwise 404 `not_found`). The source validates the key with its provider first: accepted means stored; rejected is 422 `source_key_rejected` (with the source named in `Problem.source`) and nothing is stored, a previously saved key stays; a provider failure is 502 or 504 and nothing is stored; a key that breaks the source's format is 400 `validation`. Saving again replaces the key. Saving a key does not change the default. The key is write-only: never returned, never logged. Returns the refreshed lists.
       parameters:
-        - name: q
-          in: query
-          required: true
-          description: Trimmed query, 3 to 200 characters
-          schema:
-            type: string
-            minLength: 3
-            maxLength: 200
+        - $ref: '#/components/parameters/DataSourceResourceType'
+        - $ref: '#/components/parameters/DataSourceIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveDataSourceKeyRequest'
       responses:
         '200':
-          description: Movie and TV hits
+          description: Data sources after the change
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/MovieSearchHit'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '502':
-          $ref: '#/components/responses/BadGateway'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-        '504':
-          $ref: '#/components/responses/GatewayTimeout'
-
-  /api/v1/search/movies/{type}/{sourceId}:
-    get:
-      tags: [search]
-      operationId: getMovieDetails
-      summary: Get TMDb movie or TV details
-      description: Requires the user's TMDb token (409 tmdb_token_missing or tmdb_token_invalid otherwise).
-      parameters:
-        - name: type
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [movie, tv]
-        - name: sourceId
-          in: path
-          required: true
-          description: TMDb id (digits)
-          schema:
-            type: string
-            pattern: '^[0-9]+$'
-      responses:
-        '200':
-          description: Movie or TV details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MovieDetails'
+                $ref: '#/components/schemas/DataSources'
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '429':
-          $ref: '#/components/responses/TooManyRequests'
-        '502':
-          $ref: '#/components/responses/BadGateway'
-        '503':
-          $ref: '#/components/responses/ServiceUnavailable'
-        '504':
-          $ref: '#/components/responses/GatewayTimeout'
-
-  /api/v1/search/sources:
-    get:
-      tags: [search]
-      operationId: listSearchSources
-      summary: List search sources and their availability for the current user
-      responses:
-        '200':
-          description: Sources
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/SearchSource'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # ===== SYNC =====
-  /api/v1/sync/push:
-    post:
-      tags: [sync]
-      operationId: pushMutations
-      summary: Push outbox mutations
-      description: |
-        Mutations are processed in order, each in its own transaction. A repeated mutationId returns the stored result.
-        A failing mutation is rejected individually (see MutationResult); the HTTP status is 200 unless the request itself is malformed.
-        A replayed mutationId returns the stored status, reason, existingId and version, and `record` is rebuilt from the live row (a tombstone if the row was deleted since); the license key is never stored in the idempotency log.
-        An upsert for an id whose tombstone was already purged (older than 90 days) is accepted as a new record. A client that received `cursor_expired` from pull MUST complete the full pull before pushing, so that stale local rows are dropped first.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SyncPushRequest'
-      responses:
-        '200':
-          description: Per-mutation results, in request order
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncPushResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/v1/sync/pull:
-    get:
-      tags: [sync]
-      operationId: pullChanges
-      summary: Pull changes since a cursor
-      description: |
-        Changes (including tombstones) of the current user in change order, page size 200. Without cursor returns all live records and recent tombstones. Every response, even an empty page, carries a fresh cursor with the current issue time.
-
-        Expired cursor: tombstones are purged after 90 days, so a cursor older than that retention can no longer prove that deletes were seen. Such a cursor returns 410 with problem `code: cursor_expired`; the client discards its cursor and cache cursor state and does a full pull (no cursor). The cursor carries its issue time, which is how the server detects this.
-
-        Pull-side safety window: `change_seq` is a global sequence assigned at write time but rows become visible at commit, so a late-committing row can carry a value below a cursor that has already advanced.
-        To cover this, a pull that starts from a cursor issued with `hasMore=false` also re-reads a short window behind that cursor (30 seconds before the cursor's issue time; write transactions are limited to 10 seconds), so it may return records the client already has.
-        Cursors issued with `hasMore=true` are exact, so a paging run always terminates.
-        Clients MUST apply changes idempotently by `(resourceType, id)`: ignore a change whose `version` is lower than or equal to the cached one, except a tombstone, which always wins.
-      parameters:
-        - name: cursor
-          in: query
-          required: false
-          description: Opaque cursor from the previous response (omit for a full pull)
-          schema:
-            type: string
-      responses:
-        '200':
-          description: A page of changes
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SyncPullResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '410':
-          $ref: '#/components/responses/CursorExpired'
-
-  # ===== PUSH SUBSCRIPTIONS =====
-  /api/v1/push-subscriptions:
-    post:
-      tags: [push]
-      operationId: registerPushSubscription
-      summary: Register a Web Push subscription
-      description: Idempotent by endpoint; registering an existing endpoint reassigns it to the caller and replaces its keys.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterPushSubscriptionRequest'
-      responses:
-        '201':
-          description: Subscription registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PushSubscription'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  /api/v1/push-subscriptions/vapid-key:
-    get:
-      tags: [push]
-      operationId: getVapidPublicKey
-      summary: Get the VAPID application server public key
-      description: Public (no session needed). The client passes `publicKey` as `applicationServerKey` to `pushManager.subscribe`.
-      security: []
-      responses:
-        '200':
-          description: The VAPID public key
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VapidKey'
-        '404':
-          description: Push is not configured on this server (`push_not_configured`)
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-
-  /api/v1/push-subscriptions/{id}:
-    delete:
-      tags: [push]
-      operationId: deletePushSubscription
-      summary: Delete a Web Push subscription
-      description: Idempotent; unknown or foreign ids also return 204.
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '204':
-          description: Subscription deleted
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  # ===== EXTERNAL DATA SOURCES =====
-  /api/v1/external-data-sources:
-    get:
-      tags: [settings]
-      operationId: listExternalDataSources
-      summary: List configured external data sources (API keys)
-      responses:
-        '200':
-          description: List of configured data sources
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ExternalDataSourceConfig'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-    post:
-      tags: [settings]
-      operationId: configureExternalDataSource
-      summary: Add or update external data source API key
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConfigureExternalDataSourceRequest'
-      responses:
-        '201':
-          description: Data source configured
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ExternalDataSourceConfig'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
         '429':
           $ref: '#/components/responses/TooManyRequests'
         '502':
           $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
         '504':
           $ref: '#/components/responses/GatewayTimeout'
-
-  /api/v1/external-data-sources/{sourceType}:
     delete:
-      tags: [settings]
-      operationId: removeExternalDataSource
-      summary: Remove external data source configuration
+      tags: [data-sources]
+      operationId: deleteDataSourceKey
+      summary: Delete the user's API key of a source
+      description: |
+        Idempotent (no key saved is a no-op). Only for a source with `requiresKey` (otherwise 404 `not_found`). If the source is the user's default, the choice is kept: the source becomes unavailable and `isEffective` moves to the first available source (the stored default is not changed, so saving a key again restores it). Returns the refreshed lists.
       parameters:
-        - name: sourceType
-          in: path
-          required: true
-          schema:
-            type: string
-            enum: [tmdb]
+        - $ref: '#/components/parameters/DataSourceResourceType'
+        - $ref: '#/components/parameters/DataSourceIdPath'
       responses:
-        '204':
-          description: Data source removed
+        '200':
+          description: Data sources after the change
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSources'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
 components:
   schemas:
@@ -1197,17 +291,17 @@ components:
           description: |
             Stable machine-readable code. Used so far:
             validation (schema or field rule violated, incl. empty PATCH body and invalid locale; see errors),
-            invalid_timezone (/me and /settings: zone not in the IANA list),
-            duplicate (409 on create, see existingId),
-            gone (410, the id was deleted),
+            invalid_timezone (/settings: zone not in the IANA list),
+            not_found (404, unknown id or another user's id; also a source that is not of the resource type on the /data-sources paths),
             csrf (403, missing or invalid X-XSRF-TOKEN on a mutating request),
-            cursor_expired (410 on GET /sync/pull, the cursor is older than the 90-day tombstone retention; do a full pull),
-            immutable_field, tmdb_token_missing, tmdb_token_invalid, tmdb_token_rejected,
-            push_not_configured, provider_error, provider_rate_limited, provider_timeout, rate_limited.
-        existingId:
-          type: string
-          format: uuid
-          description: Set with code duplicate (409), the id of the live item that already holds this content
+            source_key_missing, source_key_invalid, source_key_rejected, source_not_found,
+            provider_error, provider_rate_limited, provider_timeout, rate_limited.
+            The source codes are not tied to one data source: `source_key_missing` (409, the source needs an API key the user has not saved), `source_key_invalid` (409, the provider rejected the saved key on use; the key is kept), `source_key_rejected` (422 on PUT /data-sources/{resourceType}/{source}/key, the provider rejected the submitted key; nothing stored). The source they are about is named in `source`.
+            The provider codes come from the resolver machinery when the server calls a provider (key validation today; search, details and create in later phases): source_not_found (422, the provider has no such item), rate_limited (429), provider_error (502; 503 when our outbound capacity is exhausted), provider_rate_limited (503 + Retry-After), provider_timeout (504).
+        source:
+          allOf:
+            - $ref: '#/components/schemas/DataSourceId'
+          description: The data source the problem is about. Set with source_key_missing, source_key_invalid, source_key_rejected, source_not_found, provider_error, provider_rate_limited and provider_timeout; absent for every other code (rate_limited is our own limit and names no source). The client names the source in its message from this member, never by parsing `detail`.
         errors:
           type: array
           description: Field-level validation errors
@@ -1220,523 +314,38 @@ components:
               message:
                 type: string
 
-    # ===== BOOKS =====
-    Book:
-      type: object
-      required: [id, userId, title, status, createdAt, updatedAt, version]
-      properties:
-        id:
-          type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        title:
-          type: string
-        author:
-          type: string
-        year:
-          type: integer
-        rating:
-          type: number
-          minimum: 0
-          maximum: 5
-          description: Source (Open Library) average; 0 or absent = unknown. Not user-editable.
-        status:
-          type: string
-          enum: [planned, seen]
-        isFavorite:
-          type: boolean
-        description:
-          type: string
-        coverUrl:
-          type: string
-          format: uri
-        isbn:
-          type: string
-          description: Normalized ISBN (no hyphens or spaces, uppercase X), the search hit's first. Immutable.
-        externalId:
-          type: string
-          description: Open Library work id (OL<digits>W). Absent = draft. Immutable.
-        externalLink:
-          type: string
-          format: uri
-          description: Open Library work page. Immutable.
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        version:
-          type: integer
-          format: int64
-
-    CreateBookRequest:
-      type: object
+    # ===== SOURCES =====
+    BookSourceId:
+      type: string
+      enum: [draft, open_library]
       description: |
-        A book as composed by the client from a search result (plus details) or as a draft. Also the payload of a sync `upsert` for resourceType `book`
-        (there `id` must equal the mutation's resourceId). `isbn`, `externalId` and `externalLink` are immutable after creation (400/rejected `immutable_field`).
-        A draft has no `externalId` and no `isbn`, and rating 0 or absent.
-      required: [id, title]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Client-generated record id
-        title:
-          type: string
-          minLength: 1
-          maxLength: 500
-        author:
-          type: string
-          maxLength: 500
-        year:
-          type: integer
-          minimum: 1
-          maximum: 3000
-        rating:
-          type: number
-          minimum: 0
-          maximum: 5
-        description:
-          type: string
-          maxLength: 20000
-          description: A blank value is stored as null
-        coverUrl:
-          type: string
-          format: uri
-          maxLength: 2048
-        isbn:
-          type: string
-        externalId:
-          type: string
-          pattern: '^OL[0-9]{1,12}W$'
-        externalLink:
-          type: string
-          format: uri
-        status:
-          type: string
-          enum: [planned, seen]
-          default: planned
-        isFavorite:
-          type: boolean
-          default: false
+        Source of a book: `open_library` (Open Library works) or `draft` (the user's typed text, nothing fetched). Closed per resource type, so a TMDb id can never be a book source; the movie counterpart is `MovieSourceId`. Adding a book source means adding a value here (plus the `user_default_sources` CHECK constraint, the `user_source_keys` one if it needs a key, and a server registry entry); clients show a label for an id they do not know with the id as the fallback.
 
-    UpdateBookRequest:
-      type: object
-      properties:
-        status:
-          type: string
-          enum: [planned, seen]
-        isFavorite:
-          type: boolean
-        version:
-          type: integer
-          format: int64
-          description: Client's base version (informational). Last write wins, a stale value is still applied.
-
-    # ===== MOVIES =====
-    Movie:
-      type: object
-      required: [id, userId, title, type, status, createdAt, updatedAt, version]
-      properties:
-        id:
-          type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        title:
-          type: string
-        originalTitle:
-          type: string
-        year:
-          type: integer
-        rating:
-          type: number
-          minimum: 0
-          maximum: 10
-          description: Source (TMDb) average; 0 or absent = unknown. Not user-editable.
-        type:
-          type: string
-          enum: [movie, tv]
-          description: Immutable
-        seasonCount:
-          type: integer
-          description: TV only
-        tvStatus:
-          type: string
-          enum: [ongoing, ended]
-          description: TV only; absent when unknown. TMDb Ended and Canceled map to ended
-        status:
-          type: string
-          enum: [planned, seen]
-        isFavorite:
-          type: boolean
-        description:
-          type: string
-        posterUrl:
-          type: string
-          format: uri
-        externalId:
-          type: string
-          description: TMDb id (digits). Absent = draft. Immutable.
-        externalLink:
-          type: string
-          format: uri
-          description: TMDb movie or tv page. Immutable.
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        version:
-          type: integer
-          format: int64
-
-    CreateMovieRequest:
-      type: object
+    MovieSourceId:
+      type: string
+      enum: [draft, tmdb]
       description: |
-        A movie or TV show as composed by the client from a search result (plus details) or as a draft. Also the payload of a sync `upsert` for resourceType `movie`
-        (there `id` must equal the mutation's resourceId). `type`, `externalId` and `externalLink` are immutable after creation (400/rejected `immutable_field`).
-        A draft has type `movie`, no `externalId`, and rating 0 or absent. `seasonCount` and `tvStatus` are accepted for type `tv` only.
-      required: [id, title, type]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Client-generated record id
-        type:
-          type: string
-          enum: [movie, tv]
-        title:
-          type: string
-          minLength: 1
-          maxLength: 500
-        originalTitle:
-          type: string
-          maxLength: 500
-        year:
-          type: integer
-          minimum: 1
-          maximum: 3000
-        rating:
-          type: number
-          minimum: 0
-          maximum: 10
-        seasonCount:
-          type: integer
-          minimum: 0
-        tvStatus:
-          type: string
-          enum: [ongoing, ended]
-        description:
-          type: string
-          maxLength: 20000
-          description: A blank value is stored as null
-        posterUrl:
-          type: string
-          format: uri
-          maxLength: 2048
-        externalId:
-          type: string
-          pattern: '^[0-9]{1,10}$'
-        externalLink:
-          type: string
-          format: uri
-        status:
-          type: string
-          enum: [planned, seen]
-          default: planned
-        isFavorite:
-          type: boolean
-          default: false
+        Source of a movie or tv item: `tmdb` or `draft` (the user's typed text, nothing fetched). Closed per resource type, so an Open Library id can never be a movie source; the book counterpart is `BookSourceId`. Adding a movie source means adding a value here (plus the `user_default_sources` CHECK constraint, the `user_source_keys` one if it needs a key, and a server registry entry); clients show a label for an id they do not know with the id as the fallback.
 
-    UpdateMovieRequest:
-      type: object
-      properties:
-        status:
-          type: string
-          enum: [planned, seen]
-        isFavorite:
-          type: boolean
-        seasonCount:
-          type: integer
-          minimum: 0
-          description: TV items only (TV refresh)
-        tvStatus:
-          type: string
-          enum: [ongoing, ended]
-          description: TV items only (TV refresh). A null status from TMDb is never sent (the stored value is kept)
-        version:
-          type: integer
-          format: int64
-          description: Client's base version (informational). Last write wins, a stale value is still applied.
+    DataSourceId:
+      type: string
+      enum: [open_library, tmdb]
+      description: A registered data source of any resource type (`BookSourceId` and `MovieSourceId` without `draft`). Which resource type it belongs to is the registry's (`open_library` is a book source, `tmdb` a movie source); a pair that does not match is 404 on the `/data-sources/{resourceType}/{source}/...` paths. Adding a source adds a value here and to the per-resource enums.
 
-    # ===== SUBSCRIPTIONS =====
-    Subscription:
-      type: object
-      required: [id, userId, name, expiryDate, renewalPattern, remindDays, createdAt, updatedAt, version]
-      properties:
-        id:
-          type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        name:
-          type: string
-          maxLength: 200
-        expiryDate:
-          type: string
-          format: date
-          nullable: true
-          description: YYYY-MM-DD. Null only for renewalPattern lifetime (never expires)
-        renewalPattern:
-          type: string
-          enum: [monthly, yearly, lifetime, custom, none]
-        customRenewalDays:
-          type: integer
-          minimum: 1
-          description: Required (positive) for the custom renewal pattern
-        remindDays:
-          type: integer
-          minimum: 1
-          maximum: 14
-          description: Days before expiry to notify
-        cost:
-          type: string
-          description: e.g., "$20/mo"
-        description:
-          type: string
-          maxLength: 20000
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        version:
-          type: integer
-          format: int64
-
-    CreateSubscriptionRequest:
-      type: object
-      description: |
-        A subscription as composed by the client. Also the payload of a sync `upsert` for resourceType `subscription` (there `id` must equal the mutation's resourceId): the full client state, never a diff.
-        `expiryDate` may be omitted or null only for `lifetime`; `custom` needs a positive `customRenewalDays`.
-      required: [id, name, renewalPattern, remindDays]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Client-generated record id
-        name:
-          type: string
-          minLength: 1
-          maxLength: 200
-        expiryDate:
-          type: string
-          format: date
-          nullable: true
-        renewalPattern:
-          type: string
-          enum: [monthly, yearly, lifetime, custom, none]
-        customRenewalDays:
-          type: integer
-          minimum: 1
-        remindDays:
-          type: integer
-          minimum: 1
-          maximum: 14
-        cost:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 20000
-
-    UpdateSubscriptionRequest:
-      type: object
-      minProperties: 1
-      description: Partial update; absent properties are unchanged.
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 200
-        expiryDate:
-          type: string
-          format: date
-          nullable: true
-        renewalPattern:
-          type: string
-          enum: [monthly, yearly, lifetime, custom, none]
-        customRenewalDays:
-          type: integer
-          minimum: 1
-          nullable: true
-        remindDays:
-          type: integer
-          minimum: 1
-          maximum: 14
-        cost:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 20000
-        version:
-          type: integer
-          format: int64
-          description: Client's base version (informational). Last write wins, a stale value is still applied.
-
-    # ===== LICENSES =====
-    License:
-      type: object
-      required: [id, userId, name, expiryDate, renewalPattern, remindDays, createdAt, updatedAt, version]
-      properties:
-        id:
-          type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        name:
-          type: string
-          maxLength: 200
-        expiryDate:
-          type: string
-          format: date
-          nullable: true
-          description: YYYY-MM-DD. Null only for renewalPattern lifetime (never expires)
-        renewalPattern:
-          type: string
-          enum: [monthly, yearly, lifetime, custom, none]
-        customRenewalDays:
-          type: integer
-          minimum: 1
-          description: Required (positive) for the custom renewal pattern
-        remindDays:
-          type: integer
-          minimum: 1
-          maximum: 14
-          description: Days before expiry to notify
-        cost:
-          type: string
-          description: e.g., "$99/year"
-        description:
-          type: string
-          maxLength: 20000
-        licenseKey:
-          type: string
-          maxLength: 10000
-          description: Returned to the owner only (REST and sync pull); the client shows it masked until revealed. Stored encrypted on the server (AES-GCM, license_key_version); never logged and never stored in applied_mutations.
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-        version:
-          type: integer
-          format: int64
-
-    CreateLicenseRequest:
-      type: object
-      description: |
-        A license as composed by the client. Also the payload of a sync `upsert` for resourceType `license` (there `id` must equal the mutation's resourceId): the full client state, never a diff.
-        `expiryDate` may be omitted or null only for `lifetime`; `custom` needs a positive `customRenewalDays`.
-      required: [id, name, renewalPattern, remindDays]
-      properties:
-        id:
-          type: string
-          format: uuid
-          description: Client-generated record id
-        name:
-          type: string
-          minLength: 1
-          maxLength: 200
-        expiryDate:
-          type: string
-          format: date
-          nullable: true
-        renewalPattern:
-          type: string
-          enum: [monthly, yearly, lifetime, custom, none]
-        customRenewalDays:
-          type: integer
-          minimum: 1
-        remindDays:
-          type: integer
-          minimum: 1
-          maximum: 14
-        cost:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 20000
-        licenseKey:
-          type: string
-          maxLength: 10000
-          description: Multi-line capable; stored encrypted, never logged
-
-    UpdateLicenseRequest:
-      type: object
-      minProperties: 1
-      description: Partial update; absent properties are unchanged.
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 200
-        expiryDate:
-          type: string
-          format: date
-          nullable: true
-        renewalPattern:
-          type: string
-          enum: [monthly, yearly, lifetime, custom, none]
-        customRenewalDays:
-          type: integer
-          minimum: 1
-          nullable: true
-        remindDays:
-          type: integer
-          minimum: 1
-          maximum: 14
-        cost:
-          type: string
-          maxLength: 100
-        description:
-          type: string
-          maxLength: 20000
-        licenseKey:
-          type: string
-          maxLength: 10000
-          description: Replaces the key; null or blank removes it
-          nullable: true
-        version:
-          type: integer
-          format: int64
-          description: Client's base version (informational). Last write wins, a stale value is still applied.
-
-    RenewRequest:
-      type: object
-      required: [expectedExpiryDate]
-      properties:
-        expectedExpiryDate:
-          type: string
-          format: date
-          description: The expiry date the client saw; a different current date makes the call a no-op
+    ResourceType:
+      type: string
+      enum: [book, movie]
+      description: The resource a data source serves; `movie` covers TV series too. Same values as the `resource_type` column.
 
     # ===== SETTINGS =====
+    UiLocale:
+      type: string
+      enum: [en, ru, uk]
+      description: Supported UI languages; the one list shared by the settings record, PATCH /settings and the sign-up choice.
+
     UserSettings:
       type: object
-      required: [userId, timeZone, pushNotificationsEnabled, createdAt, updatedAt]
+      required: [userId, timeZone, locale, createdAt, updatedAt]
       properties:
         userId:
           type: string
@@ -1745,12 +354,9 @@ components:
           type: string
           description: IANA timezone, e.g., "Europe/London"
         locale:
-          type: string
-          enum: [en, ru, uk]
-          nullable: true
-          description: UI language derived from the device locale (ru-RU is sent as ru); optional
-        pushNotificationsEnabled:
-          type: boolean
+          allOf:
+            - $ref: '#/components/schemas/UiLocale'
+          description: UI language. Fixed at sign-up from the browser's Accept-Language (first of en, ru, uk by quality, else en); changed only by PATCH. Never null.
         createdAt:
           type: string
           format: date-time
@@ -1758,37 +364,16 @@ components:
           type: string
           format: date-time
 
-    ExternalDataSourceConfig:
+    SaveDataSourceKeyRequest:
       type: object
-      required: [id, userId, sourceType, createdAt, updatedAt]
+      required: [apiKey]
       properties:
-        id:
-          type: string
-          format: uuid
-        userId:
-          type: string
-          format: uuid
-        sourceType:
-          type: string
-          enum: [tmdb]
-          description: Type of external data source
-        createdAt:
-          type: string
-          format: date-time
-        updatedAt:
-          type: string
-          format: date-time
-
-    ConfigureExternalDataSourceRequest:
-      type: object
-      required: [sourceType, apiKey]
-      properties:
-        sourceType:
-          type: string
-          enum: [tmdb]
         apiKey:
           type: string
-          description: Write-only, never returned. Stored as is for now (no encryption yet; owner decision, AES-GCM may be added later).
+          writeOnly: true
+          minLength: 1
+          maxLength: 512
+          description: Write-only, never returned or logged. Its format is the source's own rule (TMDb takes 20 to 512 characters of letters, digits, `.`, `_`, `-`, a v4 read access token or a v3 key), a violation is 400 `validation` with the field `apiKey`. Stored as is for now (no encryption yet; owner decision, AES-GCM may be added later).
 
     UpdateSettingsRequest:
       type: object
@@ -1798,15 +383,12 @@ components:
           type: string
           description: IANA timezone, e.g., "Europe/London"
         locale:
-          type: string
-          enum: [en, ru, uk]
-        pushNotificationsEnabled:
-          type: boolean
+          $ref: '#/components/schemas/UiLocale'
 
     # ===== ME =====
     Me:
       type: object
-      required: [id, displayName, timeZone]
+      required: [id, displayName]
       properties:
         id:
           type: string
@@ -1818,18 +400,10 @@ components:
           type: string
           format: uri
           nullable: true
-        timeZone:
-          type: string
-          description: IANA timezone (default UTC)
-        locale:
-          type: string
-          nullable: true
-          enum: [en, ru, uk]
-          description: UI language derived from the device locale, optional
 
     AccountExport:
       type: object
-      required: [exportedAt, user, settings, books, movies, subscriptions, licenses]
+      required: [exportedAt, user, settings, dataSources]
       properties:
         exportedAt:
           type: string
@@ -1838,326 +412,77 @@ components:
           $ref: '#/components/schemas/Me'
         settings:
           $ref: '#/components/schemas/UserSettings'
+        dataSources:
+          type: array
+          description: The user's chosen default data sources (no API keys, ever)
+          items:
+            $ref: '#/components/schemas/DefaultDataSource'
+
+    DataSources:
+      type: object
+      description: The registered data sources per resource type. Each list is ordered (server configuration).
+      required: [books, movies]
+      properties:
         books:
           type: array
           items:
-            $ref: '#/components/schemas/Book'
+            $ref: '#/components/schemas/DataSource'
         movies:
           type: array
           items:
-            $ref: '#/components/schemas/Movie'
-        subscriptions:
-          type: array
-          items:
-            $ref: '#/components/schemas/Subscription'
-        licenses:
-          type: array
-          items:
-            $ref: '#/components/schemas/License'
+            $ref: '#/components/schemas/DataSource'
 
-    UpdateMeRequest:
+    DataSource:
       type: object
-      minProperties: 1
-      properties:
-        timeZone:
-          type: string
-          description: IANA timezone, e.g., "Europe/London"
-        locale:
-          type: string
-          enum: [en, ru, uk]
-
-    # ===== SEARCH =====
-    BookSearchHit:
-      type: object
-      required: [sourceId, title]
-      properties:
-        sourceId:
-          type: string
-          description: Open Library work id (OL<digits>W)
-        title:
-          type: string
-        author:
-          type: string
-        isbn:
-          type: string
-        year:
-          type: integer
-        rating:
-          type: number
-          minimum: 0
-          maximum: 5
-        coverUrl:
-          type: string
-          format: uri
-
-    BookDetails:
-      type: object
-      required: [sourceId, title]
-      properties:
-        sourceId:
-          type: string
-        title:
-          type: string
-        author:
-          type: string
-        description:
-          type: string
-        coverUrl:
-          type: string
-          format: uri
-        year:
-          type: integer
-        externalLink:
-          type: string
-          format: uri
-
-    MovieSearchHit:
-      type: object
-      required: [type, sourceId, title]
-      properties:
-        type:
-          type: string
-          enum: [movie, tv]
-        sourceId:
-          type: string
-          description: TMDb id
-        title:
-          type: string
-        originalTitle:
-          type: string
-        description:
-          type: string
-        year:
-          type: integer
-        rating:
-          type: number
-          minimum: 0
-          maximum: 10
-        posterUrl:
-          type: string
-          format: uri
-
-    MovieDetails:
-      type: object
-      required: [type, sourceId, title]
-      properties:
-        type:
-          type: string
-          enum: [movie, tv]
-        sourceId:
-          type: string
-        title:
-          type: string
-        description:
-          type: string
-        posterUrl:
-          type: string
-          format: uri
-        year:
-          type: integer
-        rating:
-          type: number
-          minimum: 0
-          maximum: 10
-        tvStatus:
-          type: string
-          enum: [ongoing, ended]
-          description: TV only. Ended and Canceled map to ended; absent when unknown
-        seasonCount:
-          type: integer
-          description: TV only
-        externalLink:
-          type: string
-          format: uri
-
-    SearchSource:
-      type: object
-      required: [id, available, tokenSaved, status]
+      description: One registered data source as seen by the signed-in user. Carries no key and no part of one.
+      required: [id, label, requiresKey, isDefault, isEffective, available, tokenSaved]
       properties:
         id:
+          $ref: '#/components/schemas/DataSourceId'
+        label:
           type: string
-          enum: [openlibrary, tmdb]
+          description: Display name (`Open Library`, `TMDb`); a proper name, not translated
+        requiresKey:
+          type: boolean
+          description: True when the user must save an API key before the source is usable (TMDb); the key operations answer 404 for a source with false
+        isDefault:
+          type: boolean
+          description: True for the user's stored default of this list (the configured default until the user picks another). Exactly one per list. Kept when the source is unavailable.
+        isEffective:
+          type: boolean
+          description: True for the one source a search without `source` uses (the default if available, else the first available in list order, else the default). Exactly one per list. The client's "searching in" line and preselection.
         available:
           type: boolean
+          description: Usable by this user now; false while a required key is missing
         tokenSaved:
           type: boolean
-          description: Always false for openlibrary
-        status:
-          type: string
-          enum: [unknown, ok, rejected]
-          description: TMDb token status. V001 stores no status column, so rejected is only reported if the server can derive it
+          description: Whether the user has saved a key for this source; always false when `requiresKey` is false
 
-    # ===== SYNC =====
-    SyncPushRequest:
+    DefaultDataSource:
       type: object
-      required: [mutations]
-      properties:
-        mutations:
-          type: array
-          maxItems: 100
-          items:
-            $ref: '#/components/schemas/Mutation'
-
-    Mutation:
-      type: object
-      required: [mutationId, resourceType, resourceId, op]
-      properties:
-        mutationId:
-          type: string
-          format: uuid
-          description: Client-generated; applied at most once
-        resourceType:
-          type: string
-          enum: [book, movie, subscription, license]
-        resourceId:
-          type: string
-          format: uuid
-          description: Client-generated record id
-        op:
-          type: string
-          enum: [upsert, delete, renew]
-          description: renew is only valid for subscription and license
-        baseVersion:
-          type: integer
-          format: int64
-          description: Server version the client edit was based on (omit for create)
-        payload:
-          description: |
-            For upsert, the full client state of the record as the Create*Request matching resourceType (never a toggle or a diff); the same validation, duplicate and immutability rules as REST apply.
-            Ignored for delete and renew.
-          anyOf:
-            - $ref: '#/components/schemas/CreateBookRequest'
-            - $ref: '#/components/schemas/CreateMovieRequest'
-            - $ref: '#/components/schemas/CreateSubscriptionRequest'
-            - $ref: '#/components/schemas/CreateLicenseRequest'
-        expectedExpiryDate:
-          type: string
-          format: date
-          description: For renew; the operation is a no-op if the current expiry date differs
-
-    SyncPushResponse:
-      type: object
-      required: [results]
-      properties:
-        results:
-          type: array
-          items:
-            $ref: '#/components/schemas/MutationResult'
-
-    MutationResult:
-      type: object
-      description: |
-        Outcome of one mutation. The server stores only status, conflict, reason, existingId and version in the idempotency log (applied_mutations.result), never the record, because a License record contains the license key.
-        `record` is therefore always built from the live row when the response is produced, on the first call and on every replay; it can be newer than the state right after the mutation, and is a tombstone if the record was deleted since.
-      required: [mutationId, status]
-      properties:
-        mutationId:
-          type: string
-          format: uuid
-        status:
-          type: string
-          enum: [applied, noop, rejected]
-          description: applied (written), noop (renew state mismatch or identical content), rejected (this mutation only)
-        conflict:
-          type: boolean
-          description: True when baseVersion was stale and last-write-wins overwrote the newer server version
-        reason:
-          type: string
-          enum: [validation_failed, immutable_field, not_found, gone, duplicate]
-          description: Set when rejected. gone means tombstoned; not_found is returned for delete and renew of an id unknown to the caller (another user's id included; an upsert with another user's id creates the caller's own record and touches nothing else); duplicate means another live item holds this content (see existingId)
-        existingId:
-          type: string
-          format: uuid
-          description: Set with reason duplicate; the client drops its local row and adopts this id
-        message:
-          type: string
-        record:
-          description: Current server state of the record, built from the live row (never from the idempotency log, so a replay shows the latest state and never leaks a stale or secret copy)
-          allOf:
-            - $ref: '#/components/schemas/SyncChange'
-
-    SyncPullResponse:
-      type: object
-      required: [changes, nextCursor, hasMore]
-      properties:
-        changes:
-          type: array
-          maxItems: 200
-          items:
-            $ref: '#/components/schemas/SyncChange'
-        nextCursor:
-          type: string
-          description: Opaque; pass back as cursor
-        hasMore:
-          type: boolean
-
-    SyncChange:
-      type: object
-      description: One changed record. Exactly one of book, movie, subscription, license is set for a live record; none for a tombstone (deletedAt set).
-      required: [resourceType, id, version, updatedAt]
+      description: The user's chosen default source of one resource type (a preference like the settings; never a key). One per resource type, stored at sign-up.
+      required: [resourceType, source]
       properties:
         resourceType:
-          type: string
-          enum: [book, movie, subscription, license]
-        id:
-          type: string
-          format: uuid
-        version:
-          type: integer
-          format: int64
-        updatedAt:
-          type: string
-          format: date-time
-        deletedAt:
-          type: string
-          format: date-time
-          nullable: true
-        book:
-          $ref: '#/components/schemas/Book'
-        movie:
-          $ref: '#/components/schemas/Movie'
-        subscription:
-          $ref: '#/components/schemas/Subscription'
-        license:
-          $ref: '#/components/schemas/License'
+          $ref: '#/components/schemas/ResourceType'
+        source:
+          $ref: '#/components/schemas/DataSourceId'
 
-    # ===== PUSH SUBSCRIPTIONS =====
-    RegisterPushSubscriptionRequest:
-      type: object
-      required: [endpoint, keys]
-      properties:
-        endpoint:
-          type: string
-          format: uri
-        keys:
-          type: object
-          required: [p256dh, auth]
-          properties:
-            p256dh:
-              type: string
-            auth:
-              type: string
 
-    VapidKey:
-      type: object
-      required: [publicKey]
-      properties:
-        publicKey:
-          type: string
-          description: Uncompressed P-256 public key, base64url without padding
-
-    PushSubscription:
-      type: object
-      required: [id, createdAt]
-      description: Endpoint and keys are never returned
-      properties:
-        id:
-          type: string
-          format: uuid
-        createdAt:
-          type: string
-          format: date-time
-
+  parameters:
+    DataSourceResourceType:
+      name: resourceType
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/ResourceType'
+    DataSourceIdPath:
+      name: source
+      in: path
+      required: true
+      description: A registered source of the resource type; a valid id that is not a source of that type is 404 `not_found`, a value that is not an enum value is 400 `validation`
+      schema:
+        $ref: '#/components/schemas/DataSourceId'
   responses:
     BadRequest:
       description: Bad request
@@ -2186,36 +511,8 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
-    Conflict:
-      description: Conflict (e.g. tmdb_token_missing, tmdb_token_invalid)
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-
-    Duplicate:
-      description: Duplicate (code duplicate; existingId is the id of the live item that already holds this content)
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-
-    Gone:
-      description: The id was deleted (code gone); nothing is recreated or changed
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-
-    CursorExpired:
-      description: The pull cursor is older than the 90-day tombstone retention (code cursor_expired); retry without cursor (full pull)
-      content:
-        application/problem+json:
-          schema:
-            $ref: '#/components/schemas/Problem'
-
     UnprocessableEntity:
-      description: Unprocessable (e.g. tmdb_token_rejected)
+      description: Unprocessable (source_key_rejected when saving a source key; source_not_found when creating from a provider item the provider does not have)
       content:
         application/problem+json:
           schema:

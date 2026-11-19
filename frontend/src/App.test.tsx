@@ -1,24 +1,42 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Dexie from 'dexie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { json } from './test/fixtures'
 import { authSignal, createApiClient } from './api/client'
 import { LoginPage } from './features/identity/LoginPage'
 import { t, type Locale } from './i18n'
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+/** Answers per URL: /me (or `me`'s status), settings, logout; anything else 404. */
+function server(
+  me: () => Response,
+  calls: Request[] = [],
+  settings: () => Response = () => json(SETTINGS),
+): typeof fetch {
+  return (input, init) => {
+    const req = new Request(input, init)
+    calls.push(req)
+    const path = new URL(req.url).pathname
+    if (path === '/api/v1/me') return Promise.resolve(req.method === 'GET' ? me() : json({}))
+    if (path === '/api/v1/settings') return Promise.resolve(req.method === 'GET' ? settings() : json(SETTINGS))
+    if (path === '/api/v1/auth/logout') return Promise.resolve(new Response(null, { status: 204 }))
+    return Promise.resolve(json({ code: 'not_found' }, 404))
+  }
+}
+
+const ME = { id: '11111111-1111-1111-1111-111111111111', displayName: 'octo' }
+const SETTINGS = {
+  userId: ME.id,
+  timeZone: 'UTC',
+  locale: 'en',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+}
 
 function renderApp(status: number) {
   const api = createApiClient({
     baseUrl: 'http://localhost',
-    fetch: () =>
-      Promise.resolve(
-        status === 200
-          ? json({ id: '11111111-1111-1111-1111-111111111111', displayName: 'octo', timeZone: 'UTC' })
-          : json({ code: 'unauthorized' }, status),
-      ),
+    fetch: server(() => (status === 200 ? json(ME) : json({ code: 'unauthorized' }, status))),
   })
   return render(
     <QueryClientProvider client={new QueryClient()}>
@@ -42,10 +60,10 @@ describe('auth gate', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('signed in shows the shell, not the login button', async () => {
+  it('signed in shows the Settings screen, not the login button', async () => {
     renderApp(200)
-    await screen.findByRole('heading', { name: 'RWX' })
-    expect(screen.queryByRole('link')).toBeNull()
+    await screen.findByRole('heading', { name: t('en', 'settings.title') })
+    expect(screen.queryByRole('link', { name: t('en', 'login.signIn') })).toBeNull()
   })
 
   it('shows loading while /me is pending', () => {
@@ -59,10 +77,7 @@ describe('/me failures', () => {
     let fail = true
     const api = createApiClient({
       baseUrl: 'http://localhost',
-      fetch: () =>
-        fail
-          ? Promise.reject(new TypeError('network'))
-          : Promise.resolve(json({ id: '11111111-1111-1111-1111-111111111111', displayName: 'octo', timeZone: 'UTC' })),
+      fetch: (input, init) => (fail ? Promise.reject(new TypeError('network')) : server(() => json(ME))(input, init)),
     })
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -73,7 +88,7 @@ describe('/me failures', () => {
     expect(screen.queryByRole('link', { name: t('en', 'login.signIn') })).toBeNull()
     fail = false
     fireEvent.click(screen.getByRole('button', { name: t('en', 'app.retry') }))
-    await screen.findByRole('heading', { name: 'RWX' })
+    await screen.findByRole('heading', { name: t('en', 'settings.title') })
   })
 
   it('500 shows the error state', async () => {
@@ -99,6 +114,53 @@ describe('url and html lang', () => {
   })
 })
 
+describe('effective locale', () => {
+  const withLocale = (locale: string) =>
+    createApiClient({
+      baseUrl: 'http://localhost',
+      fetch: server(
+        () => json(ME),
+        [],
+        () => json({ ...SETTINGS, timeZone: 'Europe/London', locale }),
+      ),
+    })
+  const mount = (api: ReturnType<typeof createApiClient>) =>
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App api={api} />
+      </QueryClientProvider>,
+    )
+
+  it('stored uk on an English device renders Ukrainian', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['en-US'])
+    mount(withLocale('uk'))
+    await screen.findByRole('heading', { name: t('uk', 'settings.title') })
+    expect(document.documentElement.lang).toBe('uk')
+    vi.restoreAllMocks()
+  })
+})
+
+describe('settings failing', () => {
+  it('falls back to the device locale and still shows the app', async () => {
+    vi.spyOn(navigator, 'languages', 'get').mockReturnValue(['ru-RU'])
+    const api = createApiClient({
+      baseUrl: 'http://localhost',
+      fetch: server(
+        () => json(ME),
+        [],
+        () => json({ code: 'boom' }, 500),
+      ),
+    })
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <App api={api} />
+      </QueryClientProvider>,
+    )
+    await screen.findByRole('heading', { name: t('ru', 'settings.title') })
+    vi.restoreAllMocks()
+  })
+})
+
 describe('login errors', () => {
   for (const locale of ['en', 'ru', 'uk'] as Locale[]) {
     it(`generic message in ${locale}`, () => {
@@ -116,25 +178,17 @@ describe('login errors', () => {
   })
 })
 
-describe('home', () => {
-  it('shows login name, logout posts with CSRF then shows login and closes the db', async () => {
+describe('settings screen', () => {
+  it('shows the login name, sign out posts with CSRF then shows login', async () => {
     const calls: Request[] = []
     const api = createApiClient({
       baseUrl: 'http://localhost',
       csrfToken: () => 'tok',
-      fetch: (input: RequestInfo | URL, init?: RequestInit) => {
-        const req = new Request(input, init)
-        calls.push(req)
-        if (req.url.endsWith('/auth/logout')) return Promise.resolve(new Response(null, { status: 204 }))
-        return Promise.resolve(
-          json({ id: '22222222-2222-2222-2222-222222222222', displayName: 'octo', timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
-        )
-      },
-    })
-    const { openDb } = await import('./db/db')
-    const closed: string[] = []
-    const spy = vi.spyOn(Dexie.prototype, 'close').mockImplementation(function (this: Dexie) {
-      closed.push(this.name)
+      fetch: server(
+        () => json(ME),
+        calls,
+        () => json({ ...SETTINGS, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }),
+      ),
     })
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -142,13 +196,10 @@ describe('home', () => {
       </QueryClientProvider>,
     )
     await screen.findByText('octo')
-    void openDb
-    fireEvent.click(screen.getByRole('button', { name: t('en', 'home.logout') }))
+    fireEvent.click(screen.getByRole('button', { name: t('en', 'settings.signOut') }))
     await screen.findByRole('link', { name: t('en', 'login.signIn') })
     const out = calls.find((c) => c.url.endsWith('/auth/logout'))!
     expect(out.method).toBe('POST')
     expect(out.headers.get('X-XSRF-TOKEN')).toBe('tok')
-    expect(closed).toContain('rwx-22222222-2222-2222-2222-222222222222')
-    spy.mockRestore()
   })
 })

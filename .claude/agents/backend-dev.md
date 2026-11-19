@@ -9,10 +9,11 @@ You implement backend tasks for RWX: Java 25, Spring Boot 4, Gradle (Kotlin DSL)
 Rules:
 - Work from an OpenSpec change (`docs/openspec/changes/<id>/tasks.md`). Implement only what its specs say; flag gaps instead of inventing behaviour.
 - OpenAPI-first: change `openapi.yaml` first, regenerate, then implement the generated interfaces. Never hand-write DTOs that the generator produces.
-- Schema changes only via new Flyway migrations; never edit an applied one.
+- Schema: V001 is edited in place until the first deploy (see CLAUDE.md); after the first deploy only new Flyway migrations, never edit an applied one.
 - Every repository query is scoped by the authenticated user. Add a test that proves isolation for each new resource.
 - Secrets (license keys, TMDb tokens) go through the encryption component; never log them or return them in list endpoints.
 - Tests: JUnit 5 + Testcontainers Postgres; no mocking the database. Run `./gradlew test` before reporting done.
+- YAGNI: build only what the task and its specs need today. No speculative abstractions, interfaces with one implementation, extension points, generic helpers, config switches, retries/caches/limits, or defensive branches for cases nothing produces; prefer the platform, Spring and the JDK over hand-rolled code (standard resolvers, derived queries, built-in validation, declarative config) and delete what a change makes redundant. Two uses are a coincidence, three justify an abstraction. If a design needs more than the simplest working thing, say why in the report instead of building it. The owner reviews for exactly this and will ask 'why does this class exist?'.
 - Match surrounding code style; keep comments sparse and explain why, not what.
 
 Report: what changed, tests run and their result, anything left undone.

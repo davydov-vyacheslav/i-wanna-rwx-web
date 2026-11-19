@@ -1,0 +1,30 @@
+{
+  "adult": false,
+  "backdrop_path": "/2fZWHLTQ6bPRr8iFUjk2eo1Mxb.jpg",
+  "created_by": [],
+  "episode_run_time": [60],
+  "first_air_date": "2019-07-25",
+  "genres": [{ "id": 10759, "name": "Action & Adventure" }],
+  "homepage": "https://www.amazon.com/dp/B07ZGTG9XV",
+  "id": 76479,
+  "in_production": true,
+  "languages": ["en"],
+  "last_air_date": "2024-05-16",
+  "name": "The Boys",
+  "number_of_episodes": 32,
+  "number_of_seasons": 4,
+  "origin_country": ["US"],
+  "original_language": "en",
+  "original_name": "The Boys",
+  "overview": "A group of vigilantes known informally as \"The Boys\" set out to take down corrupt superheroes with no more than blue-collar grit and a willingness to fight dirty.",
+  "popularity": 301.7,
+  "poster_path": "/2zmTngn1tYC1AvfnrFLhxeD82hz.jpg",
+  "seasons": [
+    { "air_date": "2019-07-25", "episode_count": 8, "id": 98563, "name": "Season 1", "overview": "", "poster_path": "/lc6WfCnDy7O1VXFkKYj3MHHq8x8.jpg", "season_number": 1, "vote_average": 8.0 }
+  ],
+  "status": "Returning Series",
+  "tagline": "",
+  "type": "Scripted",
+  "vote_average": 8.5,
+  "vote_count": 9100
+}
