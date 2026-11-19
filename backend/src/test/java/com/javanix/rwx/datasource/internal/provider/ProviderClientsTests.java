@@ -106,7 +106,7 @@ class ProviderClientsTests {
 
     @Test
     void readTimeoutIsProviderTimeout() {
-        wm.stubFor(get(anyUrl()).willReturn(aResponse().withBody("{}").withFixedDelay(1500)));
+        wm.stubFor(get(anyUrl()).willReturn(aResponse().withBody("{}").withFixedDelay(800)));
 
         assertThatThrownBy(() -> probe("spring.http.serviceclient.open-library.read-timeout=300ms").get("x")).isInstanceOf(ProviderTimeout.class);
     }

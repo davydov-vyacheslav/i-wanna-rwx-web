@@ -46,6 +46,9 @@ public abstract class AbstractDraftResolver<R extends MediaRef, I extends MediaI
 
     public static final int MAX_TEXT_CODE_POINTS = 200;
 
+    /** The search minimum; a draft itself may be shorter. */
+    public static final int MIN_SEARCH_CODE_POINTS = 3;
+
     private static final String PREFIX = "https://www.google.com/search?q=";
 
     /** The draft text of a draft link, or empty when the URL is not a valid draft link (every reason alike). */

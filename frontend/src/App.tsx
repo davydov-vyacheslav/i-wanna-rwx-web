@@ -3,7 +3,7 @@ import { useMe, useSignedOut } from './features/identity/useMe'
 import { useLocale, useSyncTimeZone } from './features/settings/useSettings'
 import { LoginPage } from './features/identity/LoginPage'
 import { t } from './i18n'
-import { SettingsScreen } from './features/settings/SettingsScreen'
+import { AppShell } from './features/shell/AppShell'
 import type { ApiClient } from './api/client'
 
 export default function App({ api }: { api?: ApiClient }) {
@@ -60,12 +60,5 @@ export default function App({ api }: { api?: ApiClient }) {
   if (signedOut || !me) {
     return <LoginPage error={error} locale={locale} />
   }
-  // the Settings screen is the only signed-in screen until the media lists arrive (Phase 3)
-  return (
-    <main className="pt-safe pb-safe px-safe bg-bg text-ink min-h-dvh">
-      <div className="mx-auto w-full max-w-xl">
-        <SettingsScreen me={me} api={api} locale={locale} />
-      </div>
-    </main>
-  )
+  return <AppShell me={me} api={api} locale={locale} />
 }

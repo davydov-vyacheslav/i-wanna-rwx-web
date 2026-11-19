@@ -11,7 +11,7 @@ import java.lang.annotation.Target;
 /**
  * The value, when present, is a URL with an http or https scheme and a host (see {@link HttpUrls}). Put on contract
  * fields with {@code x-field-extra-annotation} in {@code openapi.yaml}; a violation is the usual 400 {@code validation}.
- * Whether the URL names something we know is not this constraint's business (422 {@code unsupported_source}).
+ * Whether the URL names something we know is not this constraint's business (an unrecognized URL is also a 400 {@code validation} on {@code sourceUrl}).
  */
 @Documented
 @Constraint(validatedBy = HttpUrlValidator.class)

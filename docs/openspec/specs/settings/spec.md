@@ -7,11 +7,11 @@ Contract: `api/openapi.yaml`. Schema: `V001`. Visuals: `docs/design/design-syste
 ## Requirements
 
 ### Requirement: Settings navigation
-After sign-in the app SHALL show the Settings screen directly while it is the only screen (Phase 2; the tab bar arrives in Phase 3, see `media-core`). Settings SHALL be one screen with the sections Account, Sources, Language and timezone (one group, a row each) and Account data in that order. On a wide screen the content column SHALL stay narrow and centered.
+Settings SHALL be a top-level entry next to Books and Movies (bottom tab bar on phones, left sidebar from 768px; see `media`, Navigation shell), reachable in one tap from any list. Settings SHALL be one screen with the sections Account, Sources, Language and timezone (one group, a row each) and Account data in that order. On a wide screen the content column SHALL stay narrow and centered.
 
-#### Scenario: First screen after sign-in
-- **WHEN** a user signs in and no list screens exist yet
-- **THEN** the Settings screen is shown with no tab bar
+#### Scenario: Reach Settings from a list
+- **WHEN** the user taps the Settings entry on any list
+- **THEN** the Settings screen is shown and the entry is marked current
 
 ### Requirement: Account section
 Settings SHALL show the signed-in identity read-only (the display name and avatar from `/me`, initials when the avatar is missing or fails to load) and a "Sign out" action. Sign-out semantics belong to identity.
@@ -67,7 +67,11 @@ Settings SHALL show the stored timezone and let the user change it (native selec
 - **THEN** no request is sent, detection is skipped on this device and the action disappears
 
 ### Requirement: Language and locale
-The UI language SHALL be the stored user locale (always set, fixed at sign-up from the browser language) once settings are loaded; the device locale (en, ru, uk, English fallback) applies only before they load, if they fail to load, and on the login page; dates, numbers and sorting use `Intl` with that locale. Settings SHALL let the user choose en, ru or uk in a native select (each language named in its own language), stored through `PATCH /settings` (`locale`) and applied at once without reload. Once chosen, the stored locale applies on all devices.
+The UI language SHALL be the stored user locale (always set, fixed at sign-up from the browser language) once settings are loaded; the device locale (en, ru, uk, English fallback) applies only before they load, if they fail to load, and on the login page; dates, numbers and the sort of titles use `Intl` with that locale. Settings SHALL let the user choose en, ru or uk in a native select (each language named in its own language), stored through `PATCH /settings` (`locale`) and applied at once without reload. Once chosen, the stored locale applies on all devices.
+
+#### Scenario: Russian titles sort with the Russian collator
+- **WHEN** the effective locale is `ru` and a list is sorted by title
+- **THEN** titles are ordered with the Russian collator
 
 #### Scenario: Russian device
 - **WHEN** settings have not loaded yet (or the user is signed out) and the device locale is `ru-RU`

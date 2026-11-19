@@ -20,10 +20,312 @@ tags:
     description: User account and preferences
   - name: data-sources
     description: The user's data sources per resource type (books, movies and TV), with availability, the chosen default and API keys for sources that need one (write-only, never returned)
+  - name: books
+    description: Books (add, list, edit, delete)
+  - name: movies
+    description: Movies and TV shows (add, list, edit, delete)
+  - name: search
+    description: Keyword search over the data sources (Open Library for books, TMDb for movies and TV), with canonical source URLs
   - name: me
     description: Current user
 
 paths:
+  # ===== BOOKS =====
+  /api/v1/books:
+    get:
+      tags: [books]
+      operationId: listBooks
+      summary: List user's books
+      description: All live books of the user as a bare array. No filter, sort or paging parameters; the client filters and sorts over its cached full list (media spec).
+      responses:
+        '200':
+          description: List of books
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Book'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [books]
+      operationId: createBook
+      summary: Add a book from a source URL (provider item or draft)
+      description: |
+        The request is `{id, sourceUrl}` and nothing else: the client UUID and the `sourceUrl` of the entry the user picked in the add sheet. The server decides everything else.
+        The server never fetches the URL it was given. It recognizes the source from the URL (the identity, in any pasted form, comes from the URL itself) and then reads the item from the provider on its own configured address, which spends one details token (429 `rate_limited`). Provider items store the provider's fields and the canonical `externalLink`; failures create nothing (409 `source_key_missing`/`source_key_invalid` with `source`, 422 `source_not_found`, 502, 503 with `Retry-After`, 504) and the same id can be retried.
+        The draft source (a `https://www.google.com/search?q=<text>` link) fetches nothing: only the `q` parameter is read (decoded, NFC, trimmed, 1..200 characters, no control characters); the stored title is that text and the stored `externalLink` is the rebuilt canonical search URL. A URL no source recognizes (or whose content is invalid) is 400 `validation` on `sourceUrl`.
+        Status and favorite are not part of create: a new book is `planned` and not favorite (change them with PATCH).
+        Idempotent by id: a live book with the same id returns 200 with the stored item before the URL is recognized (the body must still be valid: a `sourceUrl` that is not an http(s) URL is 400; what it names is ignored).
+        A provider item already held (same source and id) or whose ISBN another live book holds is 409 `duplicate` with `existingId` (the same-item case before any provider call). A draft with the same trimmed case-insensitive title as any live book is 409 `duplicate` with `existingId`.
+        An id that was deleted returns 410 `gone` and recreates nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookRequest'
+      responses:
+        '200':
+          description: A live book with this id already exists; returned unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '201':
+          description: Book created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/DuplicateOrConflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /api/v1/books/{id}:
+    get:
+      tags: [books]
+      operationId: getBook
+      summary: Get book details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [books]
+      operationId: updateBook
+      summary: Update book status or favorite
+      description: Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookRequest'
+      responses:
+        '200':
+          description: Book updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Book'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+    delete:
+      tags: [books]
+      operationId: deleteBook
+      summary: Delete book
+      description: Tombstones the book. Idempotent (deleting a deleted book is 204); an unknown or another user's id is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Book deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ===== MOVIES =====
+  /api/v1/movies:
+    get:
+      tags: [movies]
+      operationId: listMovies
+      summary: List user's movies and TV shows
+      description: All live items of the user as a bare array. No filter, sort or paging parameters; the client filters and sorts over its cached full list (media spec).
+      responses:
+        '200':
+          description: List of movies/shows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Movie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [movies]
+      operationId: createMovie
+      summary: Add a movie from a source URL (provider item or draft)
+      description: |
+        The request is `{id, sourceUrl}` and nothing else (no title, no type): the client UUID and the `sourceUrl` of the entry the user picked in the add sheet. The server decides everything else.
+        The server never fetches the URL it was given. It recognizes the source from the URL (the identity, in any pasted form, comes from the URL itself; a TMDb movie and tv URL with the same number are different items) and then reads the item from the provider on its own configured address, which spends one details token (429 `rate_limited`). Provider items store the provider's fields and the canonical `externalLink`; failures create nothing (409 `source_key_missing`/`source_key_invalid` with `source`, 422 `source_not_found`, 502, 503 with `Retry-After`, 504) and the same id can be retried.
+        The draft source (a `https://www.google.com/search?q=<text>` link, title = the text, type `movie`) fetches nothing: only the `q` parameter is read (decoded, NFC, trimmed, 1..200 characters, no control characters); the stored `externalLink` is the rebuilt canonical search URL. A URL no source recognizes (or whose content is invalid) is 400 `validation` on `sourceUrl`.
+        Status and favorite are not part of create: a new item is `planned` and not favorite (change them with PATCH).
+        Idempotent by id: a live item with the same id returns 200 with the stored item before the URL is recognized (the body must still be valid: a `sourceUrl` that is not an http(s) URL is 400; what it names is ignored).
+        A provider item already held (same source, type and id; movie 1396 and tv 1396 are different items) is 409 `duplicate` with `existingId`, before any provider call. A draft with the same trimmed case-insensitive title as any live item (title or original title) is 409 `duplicate` with `existingId`.
+        An id that was deleted returns 410 `gone` and recreates nothing.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMovieRequest'
+      responses:
+        '200':
+          description: A live item with this id already exists; returned unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '201':
+          description: Movie/show created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/DuplicateOrConflict'
+        '410':
+          $ref: '#/components/responses/Gone'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /api/v1/movies/{id}:
+    get:
+      tags: [movies]
+      operationId: getMovie
+      summary: Get movie or TV show details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Movie/show details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [movies]
+      operationId: updateMovie
+      summary: Update movie or TV show status, favorite or TV series data
+      description: |
+        `seasonCount` and `tvStatus` are the write path of the TV refresh and are accepted for `tv` items only (400 otherwise).
+        Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMovieRequest'
+      responses:
+        '200':
+          description: Movie/show updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Movie'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+    delete:
+      tags: [movies]
+      operationId: deleteMovie
+      summary: Delete movie or TV show
+      description: Tombstones the item. Idempotent (deleting a deleted item is 204); an unknown or another user's id is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Movie/show deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # ===== SETTINGS =====
   /api/v1/settings:
     get:
@@ -146,7 +448,7 @@ paths:
       tags: [me]
       operationId: exportMe
       summary: Export all data of the current account
-      description: Machine-readable copy of everything the user owns (profile, settings, chosen default data sources; media and reminders join the export in their phases) as a JSON download. Never includes a data source API key or session data.
+      description: Machine-readable copy of everything the user owns (profile, settings, chosen default data sources, books and movies; reminders join the export in their phase) as a JSON download. Never includes a data source API key or session data.
       responses:
         '200':
           description: Account data
@@ -266,6 +568,146 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ===== SEARCH =====
+  /api/v1/search/books:
+    get:
+      tags: [search]
+      operationId: searchBooks
+      summary: Search books by keyword in a book source (at most 10 provider hits, then one draft entry)
+      description: |
+        Calls the selected source upstream (the `source` parameter, else the user's effective source from `GET /data-sources`) and returns the parsed hits in the source's order, each with a canonical server-generated `sourceUrl`. The list ALWAYS ends with exactly one extra entry of kind `draft` carrying the typed text (title = trimmed text, `sourceUrl` = the Google search link built from it), below the provider hits; with no provider hits it is the only entry. A provider failure is an error response and no list (the client builds the same draft entry locally).
+        "Already in library" is not computed here: the client compares `sourceUrl` with its items' `externalLink` (and the draft entry by normalized title).
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/SearchBookSourceId'
+      responses:
+        '200':
+          description: Hits, then the draft entry
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 1
+                maxItems: 11
+                items:
+                  $ref: '#/components/schemas/BookSearchHit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /api/v1/search/movies:
+    get:
+      tags: [search]
+      operationId: searchMovies
+      summary: Search movies and TV by keyword in a movie source (at most 10 provider hits, then one draft entry)
+      description: |
+        As `GET /search/books` for the movie sources (TMDb: movies and series mixed, persons dropped). TMDb needs the user's API key (409 `source_key_missing` or `source_key_invalid` otherwise, `Problem.source` names the source). The list ALWAYS ends with exactly one `draft` entry (title = trimmed text, `sourceUrl` = the Google search link, no `type`).
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/SearchMovieSourceId'
+      responses:
+        '200':
+          description: Hits, then the draft entry
+          content:
+            application/json:
+              schema:
+                type: array
+                minItems: 1
+                maxItems: 11
+                items:
+                  $ref: '#/components/schemas/MovieSearchHit'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /api/v1/search/books/details:
+    get:
+      tags: [search]
+      operationId: getBookDetails
+      summary: Preview the normalized book a source URL would be stored as
+      description: |
+        By `sourceUrl` (the same input as `POST /books`, so the preview cannot drift from what create stores; it also works for a pasted provider URL and does not expose provider ids). The URL is recognized and canonicalized by the server and never fetched. A draft URL has no details; it and any URL no source recognizes are 400 `validation` with `errors[0].field` `sourceUrl`. Provider 404 is 404 `not_found` here (create answers 422 `source_not_found`).
+      parameters:
+        - $ref: '#/components/parameters/SourceUrlQuery'
+      responses:
+        '200':
+          description: Book details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
+  /api/v1/search/movies/details:
+    get:
+      tags: [search]
+      operationId: getMovieDetails
+      summary: Preview the normalized movie or TV item a source URL would be stored as
+      description: |
+        As `GET /search/books/details` for movie sources; the type (movie or tv) comes from the URL. Needs the user's TMDb API key (409 `source_key_missing` or `source_key_invalid` otherwise). Also the TV refresh read path: the client passes the stored `externalLink`.
+      parameters:
+        - $ref: '#/components/parameters/SourceUrlQuery'
+      responses:
+        '200':
+          description: Movie or TV details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MovieDetails'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+
 components:
   schemas:
     # ===== COMMON =====
@@ -290,14 +732,20 @@ components:
           type: string
           description: |
             Stable machine-readable code. Used so far:
-            validation (schema or field rule violated, incl. empty PATCH body and invalid locale; see errors),
+            validation (schema or field rule violated, incl. empty PATCH body and invalid locale; see errors; also a `sourceUrl` that no source of the resource recognizes, a wrong-type or draft link on the details endpoints, or a draft link with a missing, too long or control-character `q`; the URL is never echoed),
             invalid_timezone (/settings: zone not in the IANA list),
+            duplicate (409 on create, see existingId),
             not_found (404, unknown id or another user's id; also a source that is not of the resource type on the /data-sources paths),
+            gone (410, the id was deleted),
             csrf (403, missing or invalid X-XSRF-TOKEN on a mutating request),
             source_key_missing, source_key_invalid, source_key_rejected, source_not_found,
             provider_error, provider_rate_limited, provider_timeout, rate_limited.
             The source codes are not tied to one data source: `source_key_missing` (409, the source needs an API key the user has not saved), `source_key_invalid` (409, the provider rejected the saved key on use; the key is kept), `source_key_rejected` (422 on PUT /data-sources/{resourceType}/{source}/key, the provider rejected the submitted key; nothing stored). The source they are about is named in `source`.
             The provider codes come from the resolver machinery when the server calls a provider (key validation today; search, details and create in later phases): source_not_found (422, the provider has no such item), rate_limited (429), provider_error (502; 503 when our outbound capacity is exhausted), provider_rate_limited (503 + Retry-After), provider_timeout (504).
+        existingId:
+          type: string
+          format: uuid
+          description: Set with code duplicate (409), the id of the live item that already holds this content
         source:
           allOf:
             - $ref: '#/components/schemas/DataSourceId'
@@ -327,6 +775,16 @@ components:
       description: |
         Source of a movie or tv item: `tmdb` or `draft` (the user's typed text, nothing fetched). Closed per resource type, so an Open Library id can never be a movie source; the book counterpart is `BookSourceId`. Adding a movie source means adding a value here (plus the `user_default_sources` CHECK constraint, the `user_source_keys` one if it needs a key, and a server registry entry); clients show a label for an id they do not know with the id as the fallback.
 
+    BookSearchSourceId:
+      type: string
+      enum: [open_library]
+      description: A searchable book source, `BookSourceId` without `draft` (never a registered search source; `source=draft` on a search is 400 `validation`).
+
+    MovieSearchSourceId:
+      type: string
+      enum: [tmdb]
+      description: A searchable movie source, `MovieSourceId` without `draft` (never a registered search source; `source=draft` on a search is 400 `validation`).
+
     DataSourceId:
       type: string
       enum: [open_library, tmdb]
@@ -336,6 +794,205 @@ components:
       type: string
       enum: [book, movie]
       description: The resource a data source serves; `movie` covers TV series too. Same values as the `resource_type` column.
+
+    # ===== BOOKS =====
+    Book:
+      type: object
+      required: [id, userId, title, source, externalId, externalLink, status, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        author:
+          type: string
+        year:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+          description: Source (Open Library) average; 0 or absent = unknown. Not user-editable.
+        status:
+          type: string
+          enum: [planned, seen]
+        isFavorite:
+          type: boolean
+        description:
+          type: string
+        coverUrl:
+          type: string
+          format: uri
+        isbn:
+          type: string
+          description: Normalized ISBN (no hyphens or spaces, uppercase X), normalized by the server from the provider's value. Absent for drafts. Immutable.
+        source:
+          allOf:
+            - $ref: '#/components/schemas/BookSourceId'
+          description: |
+            Where the item came from: `open_library` or `draft` for a book. Immutable. Together with `externalId` it is the identity used for duplicate detection; the UI shows it as a badge (`draft` is translated by the client, a provider id maps to its name). A client treats an item as a draft exactly when `source` is `draft`.
+        externalId:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: Always present. For a provider item the provider's id (Open Library work id, OL<digits>W), extracted by the server from the source URL. For a draft (`source` `draft`) the normalized text (the title in Unicode NFC, trimmed and case-folded), so the draft duplicate rule is the same unique key as for provider items. Informational for clients (rely on `source` and `externalLink`). Immutable.
+        externalLink:
+          type: string
+          format: uri
+          description: |
+            Canonical source URL generated by the server, always https, never copied from the client: the Open Library work page `https://openlibrary.org/works/<id>`, or for a draft the Google web-search link `https://www.google.com/search?q=<percent-encoded title>` (a draft has no provider page; the link is not a provider identity). The same string is the `sourceUrl` the client sends for a draft, so "already in library" is string equality. Open it only if it parses as https. Immutable.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreateBookRequest:
+      type: object
+      description: |
+        Create request: the client UUID and the `sourceUrl` of the picked search entry (or a pasted provider page URL). Nothing else is accepted or stored from the client; the server recognizes the source from the URL, resolves it and fills every field of `Book` itself. 
+      required: [id, sourceUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated record id
+        sourceUrl:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          x-field-extra-annotation: '@com.javanix.rwx.common.validators.HttpUrl'
+          description: |
+            Canonical `sourceUrl` of the picked entry. Recognition and canonicalization are the server's (the draft `https://www.google.com/search?q=<text>`, only `q` read). Must be an http(s) URL with a host (400 `validation` otherwise); anything the server cannot recognize is also 400 `validation` on `sourceUrl`. It is never fetched.
+
+    UpdateBookRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [planned, seen]
+        isFavorite:
+          type: boolean
+        version:
+          type: integer
+          format: int64
+          description: Client's base version (informational). Last write wins, a stale value is still applied.
+
+    # ===== MOVIES =====
+    Movie:
+      type: object
+      required: [id, userId, title, type, source, externalId, externalLink, status, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        originalTitle:
+          type: string
+        year:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 10
+          description: Source (TMDb) average; 0 or absent = unknown. Not user-editable.
+        type:
+          type: string
+          enum: [movie, tv]
+          description: Immutable
+        seasonCount:
+          type: integer
+          description: TV only
+        tvStatus:
+          type: string
+          enum: [ongoing, ended]
+          description: TV only; absent when unknown. TMDb Ended and Canceled map to ended
+        status:
+          type: string
+          enum: [planned, seen]
+        isFavorite:
+          type: boolean
+        description:
+          type: string
+        posterUrl:
+          type: string
+          format: uri
+        source:
+          allOf:
+            - $ref: '#/components/schemas/MovieSourceId'
+          description: |
+            Where the item came from: `tmdb` or `draft` for a movie or tv item. Immutable. Together with `type` and `externalId` it is the identity used for duplicate detection. A client treats an item as a draft exactly when `source` is `draft`.
+        externalId:
+          type: string
+          minLength: 1
+          maxLength: 1024
+          description: Always present. For a provider item the TMDb id (digits), extracted by the server from the source URL. For a draft (`source` `draft`, type `movie`) the normalized text (the title in Unicode NFC, trimmed and case-folded). Informational for clients. Immutable.
+        externalLink:
+          type: string
+          format: uri
+          description: |
+            Canonical source URL generated by the server, always https: the TMDb page `https://www.themoviedb.org/movie/<id>` or `/tv/<id>`, or for a draft the Google web-search link `https://www.google.com/search?q=<percent-encoded title>` (not a provider identity). The same string is the `sourceUrl` the client sends for a draft (duplicate detection by string equality). Open it only if it parses as https. Immutable.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreateMovieRequest:
+      type: object
+      description: |
+        Create request: the client UUID and the `sourceUrl` of the picked search entry (or a pasted provider page URL). No title, no type, no provider id: the movie or tv type comes from the URL and the server fills every field of `Movie`. 
+      required: [id, sourceUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated record id
+        sourceUrl:
+          type: string
+          minLength: 1
+          maxLength: 4096
+          x-field-extra-annotation: '@com.javanix.rwx.common.validators.HttpUrl'
+          description: |
+            Canonical `sourceUrl` of the picked entry (the draft `https://www.google.com/search?q=<text>`). Anything the server cannot recognize is 400 `validation` on `sourceUrl`. It is never fetched.
+
+    UpdateMovieRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [planned, seen]
+        isFavorite:
+          type: boolean
+        seasonCount:
+          type: integer
+          minimum: 0
+          description: TV items only (TV refresh)
+        tvStatus:
+          type: string
+          enum: [ongoing, ended]
+          description: TV items only (TV refresh). A null status from TMDb is never sent (the stored value is kept)
+        version:
+          type: integer
+          format: int64
+          description: Client's base version (informational). Last write wins, a stale value is still applied.
+
 
     # ===== SETTINGS =====
     UiLocale:
@@ -403,7 +1060,7 @@ components:
 
     AccountExport:
       type: object
-      required: [exportedAt, user, settings, dataSources]
+      required: [exportedAt, user, settings, dataSources, books, movies]
       properties:
         exportedAt:
           type: string
@@ -417,6 +1074,14 @@ components:
           description: The user's chosen default data sources (no API keys, ever)
           items:
             $ref: '#/components/schemas/DefaultDataSource'
+        books:
+          type: array
+          items:
+            $ref: '#/components/schemas/Book'
+        movies:
+          type: array
+          items:
+            $ref: '#/components/schemas/Movie'
 
     DataSources:
       type: object
@@ -469,7 +1134,156 @@ components:
           $ref: '#/components/schemas/DataSourceId'
 
 
+    # ===== SEARCH =====
+    BookSearchHit:
+      type: object
+      description: |
+        One entry of a book search. `kind` provider: a parsed hit of the selected source. `kind` draft: the typed text as an addable draft, always the last entry (only `kind`, `sourceUrl` and `title` are set). No provider id is exposed (a provider hit carries at most an optional `isbn`); `sourceUrl` is the identity the client sends back on create.
+      required: [kind, sourceUrl, title]
+      properties:
+        kind:
+          type: string
+          enum: [provider, draft]
+        sourceUrl:
+          type: string
+          format: uri
+          description: Canonical URL generated by the server (provider page in its canonical form, or the Google search link of the typed text for a draft). Sent back as `sourceUrl` of `POST /books`; equal to `Book.externalLink` of the stored item. Render a link only if it parses as https.
+        title:
+          type: string
+        author:
+          type: string
+        year:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        coverUrl:
+          type: string
+          format: uri
+        isbn:
+          type: string
+          description: Provider hits only; optional. The first non-blank ISBN the provider returns for the work, as the provider gives it (not validated or normalized). Lets the client mark an ISBN duplicate of a library book (in addition to `sourceUrl` equality, after its own normalization). Absent when the provider returns none and on the draft entry.
+
+    MovieSearchHit:
+      type: object
+      description: |
+        One entry of a movie search. `kind` provider: a parsed hit (movie or tv). `kind` draft: the typed text as an addable draft, always the last entry (only `kind`, `sourceUrl` and `title` are set; the stored type is `movie`).
+      required: [kind, sourceUrl, title]
+      properties:
+        kind:
+          type: string
+          enum: [provider, draft]
+        sourceUrl:
+          type: string
+          format: uri
+          description: Canonical URL generated by the server (TMDb movie or tv page, or the Google search link of the typed text for a draft). Sent back as `sourceUrl` of `POST /movies`; equal to `Movie.externalLink` of the stored item. Render a link only if it parses as https.
+        type:
+          type: string
+          enum: [movie, tv]
+          description: Provider hits only
+        title:
+          type: string
+        originalTitle:
+          type: string
+        description:
+          type: string
+        year:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 10
+        posterUrl:
+          type: string
+          format: uri
+
+    BookDetails:
+      type: object
+      description: The same normalized record the server stores when a book is created from this source URL (the add-sheet preview); the client never sends these values back.
+      required: [title, externalLink]
+      properties:
+        title:
+          type: string
+        author:
+          type: string
+        description:
+          type: string
+        coverUrl:
+          type: string
+          format: uri
+        year:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        isbn:
+          type: string
+          description: The first non-blank ISBN the provider returns, as the provider gives it (not validated or normalized; create normalizes it before storing). Absent when none
+        externalLink:
+          type: string
+          format: uri
+          description: Canonical source URL (equal to what create stores)
+
+    MovieDetails:
+      type: object
+      description: The same normalized record the server stores when an item is created from this source URL (the add-sheet preview); the client never sends these values back.
+      required: [type, title, externalLink]
+      properties:
+        type:
+          type: string
+          enum: [movie, tv]
+          description: Taken from the URL
+        title:
+          type: string
+        originalTitle:
+          type: string
+        description:
+          type: string
+        posterUrl:
+          type: string
+          format: uri
+        year:
+          type: integer
+        rating:
+          type: number
+          minimum: 0
+          maximum: 10
+        tvStatus:
+          type: string
+          enum: [ongoing, ended]
+          description: TV only. Ended and Canceled map to ended; absent when unknown
+        seasonCount:
+          type: integer
+          description: TV only
+        externalLink:
+          type: string
+          format: uri
+          description: Canonical source URL (equal to what create stores)
+
   parameters:
+    SearchQuery:
+      name: q
+      in: query
+      required: true
+      description: Keyword text. After trimming and NFC it must be 3 to 200 code points without control characters (checked by the server, 400 `validation` otherwise)
+      schema:
+        type: string
+    SearchBookSourceId:
+      name: source
+      in: query
+      required: false
+      description: Source id from `GET /data-sources` for this type; omitted = the user's effective source (`isEffective`). An id that is not an enum value, is `draft` or of another type, or is not in the list of this type is 400 `validation`; an unavailable source answers with its own problem (409 `source_key_missing`).
+      schema:
+        $ref: '#/components/schemas/BookSearchSourceId'
+    SearchMovieSourceId:
+      name: source
+      in: query
+      required: false
+      description: Source id from `GET /data-sources` for this type; omitted = the user's effective source (`isEffective`). An id that is not an enum value, is `draft` or of another type, or is not in the list of this type is 400 `validation`; an unavailable source answers with its own problem (409 `source_key_missing`).
+      schema:
+        $ref: '#/components/schemas/MovieSearchSourceId'
     DataSourceResourceType:
       name: resourceType
       in: path
@@ -483,9 +1297,17 @@ components:
       description: A registered source of the resource type; a valid id that is not a source of that type is 404 `not_found`, a value that is not an enum value is 400 `validation`
       schema:
         $ref: '#/components/schemas/DataSourceId'
+    SourceUrlQuery:
+      name: sourceUrl
+      in: query
+      required: true
+      description: Canonical `sourceUrl` of a search hit, a stored item's `externalLink`, or a pasted provider page URL. Recognized and canonicalized by the server, never fetched. Must be an http(s) URL with a host of 1 to 4096 characters (400 `validation` otherwise; checked by the server, like `q`).
+      schema:
+        type: string
+
   responses:
     BadRequest:
-      description: Bad request
+      description: Bad request (validation, with errors[]; includes a sourceUrl that no source of the resource recognizes, or a draft link on the details endpoints)
       content:
         application/problem+json:
           schema:
@@ -511,6 +1333,28 @@ components:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
+
+    Conflict:
+      description: Conflict (source_key_missing or source_key_invalid, with `source`)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    DuplicateOrConflict:
+      description: Duplicate (code duplicate; existingId is the id of the live item that already holds this content), or the source needs a key (source_key_missing, source_key_invalid, with `source`)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+    Gone:
+      description: The id was deleted (code gone); nothing is recreated or changed
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
     UnprocessableEntity:
       description: Unprocessable (source_key_rejected when saving a source key; source_not_found when creating from a provider item the provider does not have)
       content:

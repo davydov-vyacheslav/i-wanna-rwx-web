@@ -124,6 +124,7 @@
   --radius-sheet: 24px;
   --shadow-fab: 0 6px 18px rgba(0, 0, 0, 0.27);
   --shadow-sheet: 0 -8px 30px rgba(0, 0, 0, 0.2);
+  --shadow-dialog: 0 12px 40px rgba(0, 0, 0, 0.3);
   --ease-sheet: cubic-bezier(0.32, 0.72, 0, 1);
 }
 

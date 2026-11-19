@@ -47,7 +47,9 @@ function renderApp(status: number) {
 
 beforeEach(() => {
   authSignal.reset()
-  window.history.replaceState(null, '', '/')
+  localStorage.clear()
+  // the signed-in tests below look at the Settings tab; the shell test starts from Books
+  window.history.replaceState(null, '', '/#/settings')
 })
 
 describe('auth gate', () => {
@@ -60,8 +62,12 @@ describe('auth gate', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it('signed in shows the Settings screen, not the login button', async () => {
+  it('signed in shows the shell on Books, not the login button', async () => {
+    window.history.replaceState(null, '', '/')
     renderApp(200)
+    await screen.findByRole('heading', { name: 'Books', level: 1 })
+    expect(screen.getAllByRole('navigation', { name: t('en', 'nav.label') })).toHaveLength(2)
+    fireEvent.click(screen.getAllByRole('button', { name: t('en', 'nav.settings') })[0]!)
     await screen.findByRole('heading', { name: t('en', 'settings.title') })
     expect(screen.queryByRole('link', { name: t('en', 'login.signIn') })).toBeNull()
   })

@@ -1,5 +1,7 @@
 package com.javanix.rwx.datasource.internal.web;
 
+import static com.javanix.rwx.testkit.ProviderStubs.json;
+import static com.javanix.rwx.testkit.TestKeys.TMDB_KEY;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
@@ -33,7 +35,6 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 class DataSourcesApiTests {
 
     private static final String BASE = "/api/v1/data-sources";
-    private static final String KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0In0.tmdb_fixture_token_0123456789";
     private static final String KEY_B = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0In0.tmdb_other_fixture_token_987654";
 
     @Autowired Api api;
@@ -47,9 +48,8 @@ class DataSourcesApiTests {
     }
 
     private void authentication(int status) {
-        provider.stubFor(WireMock.get(urlPathEqualTo("/3/authentication")).willReturn(aResponse().withStatus(status)
-                .withHeader("Content-Type", "application/json").withBody(status == 200 ? "{\"success\":true}"
-                        : "{\"status_message\":\"Invalid API key: provider text\"}")));
+        json(provider, "/3/authentication", status, status == 200 ? "{\"success\":true}"
+                : "{\"status_message\":\"Invalid API key: provider text\"}");
     }
 
     private static String key(String value) {
@@ -97,7 +97,7 @@ class DataSourcesApiTests {
     @Test
     void theEndpointsNeedASessionAndACsrfToken() {
         api.get(BASE).expectProblem(401, "unauthorized");
-        api.send(HttpMethod.PUT, BASE + "/movie/tmdb/key", key(KEY)).expectProblem(401, "unauthorized");
+        api.send(HttpMethod.PUT, BASE + "/movie/tmdb/key", key(TMDB_KEY)).expectProblem(401, "unauthorized");
         var user = users.create();
         api.as(user).noCsrf().send(HttpMethod.PUT, BASE + "/book/open_library/default", null).expectProblem(403, "csrf");
         api.as(user).noCsrf().delete(BASE + "/movie/tmdb/key").expectProblem(403, "csrf");
@@ -111,24 +111,24 @@ class DataSourcesApiTests {
         authentication(200);
         var user = users.create();
 
-        var res = saveKey(user, KEY).expect(200);
+        var res = saveKey(user, TMDB_KEY).expect(200);
 
         assertThat(movies(res, "tokenSaved")).isEqualTo("true");
         assertThat(movies(res, "available")).isEqualTo("true");
         assertThat(movies(res, "isDefault")).as("the stored default stays").isEqualTo("true");
         provider.verify(1, getRequestedFor(urlPathEqualTo("/3/authentication"))
-                .withHeader("Authorization", equalTo("Bearer " + KEY)));
-        assertThat(keys(user)).containsExactly("tmdb=" + KEY);
+                .withHeader("Authorization", equalTo("Bearer " + TMDB_KEY)));
+        assertThat(keys(user)).containsExactly("tmdb=" + TMDB_KEY);
         assertThat(defaults(user)).containsExactly("book/open_library", "movie/tmdb");
-        assertThat(res.body()).doesNotContain(KEY).doesNotContainIgnoringCase("apiKey\"");
-        assertThat(api.as(user).get(BASE).expect(200).body()).doesNotContain(KEY);
+        assertThat(res.body()).doesNotContain(TMDB_KEY).doesNotContainIgnoringCase("apiKey\"");
+        assertThat(api.as(user).get(BASE).expect(200).body()).doesNotContain(TMDB_KEY);
     }
 
     @Test
     void saveReplacesTheKeyAndAV3KeyGoesInTheQuery() {
         authentication(200);
         var user = users.create();
-        saveKey(user, KEY).expect(200);
+        saveKey(user, TMDB_KEY).expect(200);
 
         var v3 = "0123456789abcdef0123456789abcdef";
         saveKey(user, v3).expect(200);
@@ -142,10 +142,10 @@ class DataSourcesApiTests {
         authentication(401);
         var user = users.create();
 
-        var res = saveKey(user, KEY).expectProblem(422, "source_key_rejected");
+        var res = saveKey(user, TMDB_KEY).expectProblem(422, "source_key_rejected");
 
         assertThat(res.<String>json("$.source")).isEqualTo("tmdb");
-        assertThat(res.body()).doesNotContain(KEY).doesNotContain("provider text");
+        assertThat(res.body()).doesNotContain(TMDB_KEY).doesNotContain("provider text");
         onlySignUpDefaults(user);
     }
 
@@ -153,12 +153,12 @@ class DataSourcesApiTests {
     void aRefusedReplacementKeepsTheOlderKey() {
         authentication(200);
         var user = users.create();
-        saveKey(user, KEY).expect(200);
+        saveKey(user, TMDB_KEY).expect(200);
         authentication(401);
 
         saveKey(user, KEY_B).expectProblem(422, "source_key_rejected");
 
-        assertThat(keys(user)).containsExactly("tmdb=" + KEY);
+        assertThat(keys(user)).containsExactly("tmdb=" + TMDB_KEY);
         assertThat(movies(api.as(user).get(BASE).expect(200), "tokenSaved")).isEqualTo("true");
     }
 
@@ -167,16 +167,16 @@ class DataSourcesApiTests {
         var user = users.create();
         provider.stubFor(WireMock.get(urlPathEqualTo("/3/authentication"))
                 .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
-        var timeout = saveKey(user, KEY).expectProblem(504, "provider_timeout");
+        var timeout = saveKey(user, TMDB_KEY).expectProblem(504, "provider_timeout");
         assertThat(timeout.<String>json("$.source")).isEqualTo("tmdb");
 
         authentication(500);
-        var error = saveKey(user, KEY).expectProblem(502, "provider_error");
+        var error = saveKey(user, TMDB_KEY).expectProblem(502, "provider_error");
         assertThat(error.<String>json("$.source")).isEqualTo("tmdb");
 
         provider.stubFor(WireMock.get(urlPathEqualTo("/3/authentication"))
                 .willReturn(aResponse().withStatus(429).withHeader("Retry-After", "7")));
-        var limited = saveKey(user, KEY).expectProblem(503, "provider_rate_limited");
+        var limited = saveKey(user, TMDB_KEY).expectProblem(503, "provider_rate_limited");
         assertThat(limited.header("Retry-After")).isEqualTo("7");
         assertThat(limited.<String>json("$.source")).isEqualTo("tmdb");
 
@@ -218,9 +218,9 @@ class DataSourcesApiTests {
         var user = users.create();
         var a = api.as(user);
 
-        a.send(HttpMethod.PUT, BASE + "/book/open_library/key", key(KEY)).expectProblem(404, "not_found");
+        a.send(HttpMethod.PUT, BASE + "/book/open_library/key", key(TMDB_KEY)).expectProblem(404, "not_found");
         a.delete(BASE + "/book/open_library/key").expectProblem(404, "not_found");
-        a.send(HttpMethod.PUT, BASE + "/book/tmdb/key", key(KEY)).expectProblem(404, "not_found");
+        a.send(HttpMethod.PUT, BASE + "/book/tmdb/key", key(TMDB_KEY)).expectProblem(404, "not_found");
         a.delete(BASE + "/book/tmdb/key").expectProblem(404, "not_found");
         a.send(HttpMethod.PUT, BASE + "/book/tmdb/default", null).expectProblem(404, "not_found");
         a.send(HttpMethod.PUT, BASE + "/movie/open_library/default", null).expectProblem(404, "not_found");
@@ -236,7 +236,7 @@ class DataSourcesApiTests {
         a.send(HttpMethod.PUT, BASE + "/movie/nope/default", null).expectProblem(400, "validation");
         a.send(HttpMethod.PUT, BASE + "/shelf/tmdb/default", null).expectProblem(400, "validation");
         a.send(HttpMethod.PUT, BASE + "/book/draft/default", null).expectProblem(400, "validation");
-        a.send(HttpMethod.PUT, BASE + "/movie/nope/key", key(KEY)).expectProblem(400, "validation");
+        a.send(HttpMethod.PUT, BASE + "/movie/nope/key", key(TMDB_KEY)).expectProblem(400, "validation");
         a.delete(BASE + "/shelf/tmdb/key").expectProblem(400, "validation");
     }
 
@@ -246,7 +246,7 @@ class DataSourcesApiTests {
     void deletingTheKeyOfTheChosenDefaultKeepsTheRowWithoutTheKey() {
         authentication(200);
         var user = users.create();
-        saveKey(user, KEY).expect(200);
+        saveKey(user, TMDB_KEY).expect(200);
 
         var res = api.as(user).delete(BASE + "/movie/tmdb/key").expect(200);
 
@@ -257,10 +257,10 @@ class DataSourcesApiTests {
         assertThat(movies(res, "tokenSaved")).isEqualTo("false");
 
         // saving the key again makes the source available again (the choice was kept)
-        var again = saveKey(user, KEY).expect(200);
+        var again = saveKey(user, TMDB_KEY).expect(200);
         assertThat(movies(again, "available")).isEqualTo("true");
         assertThat(movies(again, "isDefault")).isEqualTo("true");
-        assertThat(keys(user)).containsExactly("tmdb=" + KEY);
+        assertThat(keys(user)).containsExactly("tmdb=" + TMDB_KEY);
     }
 
     @Test
@@ -303,12 +303,12 @@ class DataSourcesApiTests {
     void settingTheDefaultOfOneTypeLeavesTheOtherTypeAlone() {
         authentication(200);
         var user = users.create();
-        saveKey(user, KEY).expect(200);
+        saveKey(user, TMDB_KEY).expect(200);
 
         api.as(user).send(HttpMethod.PUT, BASE + "/book/open_library/default", null).expect(200);
 
         assertThat(defaults(user)).containsExactly("book/open_library", "movie/tmdb");
-        assertThat(keys(user)).containsExactly("tmdb=" + KEY);
+        assertThat(keys(user)).containsExactly("tmdb=" + TMDB_KEY);
     }
 
     // ---- isolation
@@ -318,14 +318,14 @@ class DataSourcesApiTests {
         authentication(200);
         var f = users.two();
         api.as(f.a()).send(HttpMethod.PUT, BASE + "/book/open_library/default", null).expect(200);
-        saveKey(f.a(), KEY).expect(200);
+        saveKey(f.a(), TMDB_KEY).expect(200);
         var before = List.of(defaults(f.a()), keys(f.a()));
 
         // B sees none of it
         var list = api.as(f.b()).get(BASE).expect(200);
         assertThat(movies(list, "tokenSaved")).isEqualTo("false");
         assertThat(movies(list, "available")).isEqualTo("false");
-        assertThat(list.body()).doesNotContain(KEY);
+        assertThat(list.body()).doesNotContain(TMDB_KEY);
         onlySignUpDefaults(f.b());
 
         // B's operations touch B's rows only
@@ -341,16 +341,16 @@ class DataSourcesApiTests {
     void anotherUserSavingAKeyNeverReplacesOrReadsMine() {
         authentication(200);
         var f = users.two();
-        saveKey(f.a(), KEY).expect(200);
+        saveKey(f.a(), TMDB_KEY).expect(200);
 
         var res = saveKey(f.b(), KEY_B).expect(200);
 
-        assertThat(res.body()).doesNotContain(KEY, KEY_B);
-        assertThat(keys(f.a())).containsExactly("tmdb=" + KEY);
+        assertThat(res.body()).doesNotContain(TMDB_KEY, KEY_B);
+        assertThat(keys(f.a())).containsExactly("tmdb=" + TMDB_KEY);
         assertThat(keys(f.b())).containsExactly("tmdb=" + KEY_B);
         // B's delete removes B's key only
         api.as(f.b()).delete(BASE + "/movie/tmdb/key").expect(200);
-        assertThat(keys(f.a())).containsExactly("tmdb=" + KEY);
+        assertThat(keys(f.a())).containsExactly("tmdb=" + TMDB_KEY);
         assertThat(keys(f.b())).isEmpty();
     }
 
@@ -373,7 +373,7 @@ class DataSourcesApiTests {
         var user = users.create();
         authentication(200);
         var bodies = new StringBuilder();
-        bodies.append(saveKey(user, KEY).expect(200).body());
+        bodies.append(saveKey(user, TMDB_KEY).expect(200).body());
         bodies.append(api.as(user).get(BASE).expect(200).body());
         bodies.append(api.as(user).send(HttpMethod.PUT, BASE + "/movie/tmdb/default", null).expect(200).body());
         authentication(401);
@@ -384,7 +384,7 @@ class DataSourcesApiTests {
         bodies.append(saveKey(user, "bad key").expectProblem(400, "validation").body());
         bodies.append(api.as(user).delete(BASE + "/movie/tmdb/key").expect(200).body());
 
-        assertThat(bodies.toString()).doesNotContain(KEY, KEY_B);
-        assertThat(output.getAll()).doesNotContain(KEY, KEY_B);
+        assertThat(bodies.toString()).doesNotContain(TMDB_KEY, KEY_B);
+        assertThat(output.getAll()).doesNotContain(TMDB_KEY, KEY_B);
     }
 }

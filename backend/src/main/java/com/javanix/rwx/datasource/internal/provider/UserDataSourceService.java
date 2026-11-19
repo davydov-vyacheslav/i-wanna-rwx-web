@@ -61,6 +61,11 @@ public class UserDataSourceService implements SourceKeys, AccountExportContribut
         return result;
     }
 
+    /** The source a search without an explicit choice uses: the {@code isEffective} one of the type's list. */
+    public SourceInfo effective(UUID userId, ResourceType type) {
+        return list(userId).get(type).stream().filter(SourceState::isEffective).findFirst().orElseThrow().source();
+    }
+
     /** Stores the configured default of every type, at sign-up, in the sign-up transaction. */
     void createDefaults(UUID userId) {
         for (var type : ResourceType.values()) {

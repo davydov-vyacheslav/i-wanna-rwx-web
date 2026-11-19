@@ -1,5 +1,5 @@
 {
- "description": "Used by the Java tests (backend datasource and common). The titleKey vectors and the frontend twins return with the media phases (Phase 3). Edit only together with the implementations that read them. Whitespace vectors cover only characters that Java String.strip() and JavaScript trim() both treat the same way; characters on which they differ (U+00A0, U+2007, U+202F, U+FEFF, U+001C-001F, U+0085) are deliberately not covered. Strings use JSON escapes where a character is invisible.",
+ "description": "Used by the Java tests (backend datasource, common and media) and, with the media phase frontend, the twins (draftLink, titleKey). Edit only together with the implementations that read them. Whitespace vectors cover only characters that Java String.strip() and JavaScript trim() both treat the same way; characters on which they differ (U+00A0, U+2007, U+202F, U+FEFF, U+001C-001F, U+0085) are deliberately not covered. Strings use JSON escapes where a character is invisible.",
  "draftLinks": {
   "accept": [
    {
@@ -270,6 +270,72 @@
   {
    "text": "😀",
    "link": "https://www.google.com/search?q=%F0%9F%98%80"
+  }
+ ],
+ "titleKey": [
+  {
+   "input": "  Dune ",
+   "key": "dune"
+  },
+  {
+   "input": "DUNE",
+   "key": "dune"
+  },
+  {
+   "input": "Dune",
+   "key": "dune"
+  },
+  {
+   "input": "Café",
+   "key": "café"
+  },
+  {
+   "input": "Café",
+   "key": "café"
+  },
+  {
+   "input": "Ёлка",
+   "key": "ёлка"
+  },
+  {
+   "input": "Елка",
+   "key": "елка"
+  },
+  {
+   "input": "ёж",
+   "key": "ёж"
+  },
+  {
+   "input": "еж",
+   "key": "еж"
+  },
+  {
+   "input": "Война и мир",
+   "key": "война и мир"
+  },
+  {
+   "input": "ВСЁ О НЁМ",
+   "key": "всё о нём"
+  },
+  {
+   "input": "Å",
+   "key": "å"
+  },
+  {
+   "input": "Å",
+   "key": "å"
+  },
+  {
+   "input": "ǅ",
+   "key": "ǆ"
+  },
+  {
+   "input": "The Lord of the Rings",
+   "key": "the lord of the rings"
+  },
+  {
+   "input": "\u3000Dune\u2003",
+   "key": "dune"
   }
  ],
  "providerUrls": {

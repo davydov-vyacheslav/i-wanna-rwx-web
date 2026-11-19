@@ -21,7 +21,6 @@ import com.javanix.rwx.datasource.internal.provider.Fixtures;
 import com.javanix.rwx.datasource.internal.provider.TestClients;
 import com.javanix.rwx.datasource.internal.provider.TestProps;
 import java.math.BigDecimal;
-import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

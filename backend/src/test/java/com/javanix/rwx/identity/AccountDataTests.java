@@ -11,7 +11,6 @@ import com.javanix.rwx.testkit.IntegrationTest;
 import com.javanix.rwx.testkit.TestKeys;
 import com.javanix.rwx.testkit.TestUsers;
 import java.sql.SQLException;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +86,8 @@ class AccountDataTests {
         assertThat(export.<List<?>>json("$.dataSources")).as("one default per type, no key")
                 .extracting(d -> ((Map<?, ?>) d).get("resourceType") + "/" + ((Map<?, ?>) d).get("source"))
                 .containsExactly("book/open_library", "movie/tmdb");
+        assertThat(export.<List<?>>json("$.books")).isEmpty();
+        assertThat(export.<List<?>>json("$.movies")).isEmpty();
         assertThat(export.body()).doesNotContain(f.b().id().toString(), f.a().sessionId())
                 .doesNotContainIgnoringCase("session");
         assertThat(api.as(f.b()).get("/api/v1/me/export").<String>json("$.user.id")).isEqualTo(f.b().id().toString());
