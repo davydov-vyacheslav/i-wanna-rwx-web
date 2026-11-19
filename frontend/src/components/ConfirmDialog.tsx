@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from 'react'
+import { currentOpener, focusQuietly } from './opener'
 import { Spinner } from './Spinner'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), a[href]'
@@ -6,7 +7,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), a[href]'
 /**
  * Centered confirmation for a destructive action (`role="alertdialog"`); `role="dialog"`, `tone="accent"` and `children` make it a small form dialog (the data source key). Cancel has focus on open, Escape and a scrim tap
  * cancel (all three ignored while `pending`: a request already sent cannot be dismissed), Tab stays inside, and focus returns to the opener on close. The confirm button is danger-styled and fires once.
- * Static (no motion), so reduced motion needs no special case. Rendered above sheets (z-60).
+ * Static on phones; on wide screens it fades in like the Sheet dialog. Rendered above sheets (z-60).
  */
 export function ConfirmDialog({
   title,
@@ -69,14 +70,15 @@ export function ConfirmDialog({
   }, [pending])
 
   // read during the first render: a field with `autoFocus` takes focus before any effect runs
-  const opener = useRef<Element | null>(document.activeElement)
+  const opener = useRef(currentOpener())
   useEffect(() => {
     const back = opener.current
-    if (initialFocus === 'cancel') cancelButton.current?.focus()
+    if (initialFocus === 'cancel') focusQuietly(cancelButton.current)
     return () => {
       queueMicrotask(() => {
         if (document.activeElement && document.activeElement !== document.body) return
-        if (back instanceof HTMLElement && back.isConnected) back.focus()
+        // preventScroll: the opener may be the Delete button of a swiped card, which the list snaps back to rest
+        if (back?.isConnected) focusQuietly(back, { preventScroll: true })
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, on open
@@ -125,7 +127,7 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         tabIndex={-1}
-        className="bg-surface border-separator outline-none text-ink shadow-sheet border-[0.5px] rounded-card relative max-h-[88dvh] w-full max-w-sm overflow-y-auto p-5"
+        className="bg-surface border-separator outline-none text-ink shadow-dialog md:motion-safe:animate-[dialog-in_160ms_ease-out] border-[0.5px] rounded-card relative max-h-[88dvh] w-full max-w-sm overflow-y-auto p-5"
       >
         <h2 id={titleId} className="text-sheet font-semibold">
           {title}

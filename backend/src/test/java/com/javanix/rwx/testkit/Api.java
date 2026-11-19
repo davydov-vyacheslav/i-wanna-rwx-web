@@ -40,12 +40,18 @@ public class Api {
         return new Api(mvc, session, false);
     }
 
-    public Res get(String path) {
-        return send(HttpMethod.GET, path, null);
+    /** @param uriVars values for {@code {name}} placeholders of the path, encoded by MockMvc (use for free text) */
+    public Res get(String path, Object... uriVars) {
+        return send(HttpMethod.GET, path, null, uriVars);
     }
 
     public Res post(String path) {
         return send(HttpMethod.POST, path, null);
+    }
+
+    /** POST of a media item: {@code {id, sourceUrl}}. */
+    public Res postItem(String path, java.util.UUID id, String sourceUrl) {
+        return send(HttpMethod.POST, path, "{\"id\":\"" + id + "\",\"sourceUrl\":\"" + sourceUrl + "\"}");
     }
 
     public Res patch(String path, String json) {
@@ -56,9 +62,9 @@ public class Api {
         return send(HttpMethod.DELETE, path, null);
     }
 
-    public Res send(HttpMethod method, String path, String json) {
+    public Res send(HttpMethod method, String path, String json, Object... uriVars) {
         try {
-            var request = MockMvcRequestBuilders.request(method, path);
+            var request = MockMvcRequestBuilders.request(method, path, uriVars);
             if (json != null) {
                 request.contentType(MediaType.APPLICATION_JSON).content(json);
             }

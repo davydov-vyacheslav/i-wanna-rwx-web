@@ -30,6 +30,11 @@ class ProblemAdviceTests {
             throw new InvalidRequestException(List.of(new Violation("title", "must not be blank")));
         }
 
+        @GetMapping("/gone")
+        String gone() {
+            throw new GoneException();
+        }
+
         @GetMapping("/kind/{type}")
         String kind(@PathVariable ResourceType type) {
             return type.getValue();
@@ -52,6 +57,11 @@ class ProblemAdviceTests {
                 .andExpect(jsonPath("$.code").value("validation"))
                 .andExpect(jsonPath("$.detail").value("Invalid request."))
                 .andExpect(jsonPath("$.errors[0].field").value("title"));
+    }
+
+    @Test
+    void goneIs410WithTheGoneCode() throws Exception {
+        mvc.perform(get("/gone")).andExpect(status().isGone()).andExpect(jsonPath("$.code").value("gone"));
     }
 
     @Test

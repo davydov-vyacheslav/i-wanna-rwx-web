@@ -77,6 +77,14 @@ class UserDataSourceServiceTests {
     }
 
     @Test
+    void effectiveIsTheDefaultOfEachTypeEvenWhenNothingIsAvailable() {
+        var user = users.create().id();
+
+        assertThat(service.effective(user, ResourceType.BOOK).id()).isEqualTo("open_library");
+        assertThat(service.effective(user, ResourceType.MOVIE).id()).as("no key saved: the default itself").isEqualTo("tmdb");
+    }
+
+    @Test
     void theDefaultSurvivesTheDeletionOfItsKeyAndTheSourceBecomesUnavailable() {
         var user = users.create().id();
         service.setDefault(user, ResourceType.MOVIE, "tmdb");

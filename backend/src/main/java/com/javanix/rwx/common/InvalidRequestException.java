@@ -12,6 +12,11 @@ public class InvalidRequestException extends RuntimeException {
         this.errors = List.copyOf(errors);
     }
 
+    /** No source recognizes the sourceUrl; the URL is user input and is never echoed. */
+    public static InvalidRequestException unrecognizedSourceUrl() {
+        return new InvalidRequestException(List.of(new Violation("sourceUrl", "not a supported source URL")));
+    }
+
     public List<Violation> errors() {
         return errors;
     }

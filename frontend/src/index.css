@@ -1,6 +1,12 @@
 @import 'tailwindcss';
 @import './theme.css';
 
+/* Wide screens (md, 768px): sidebar and content column widths; the list FAB lines up with the column using both. */
+:root {
+  --sidebar-w: 14rem;
+  --column-w: 36rem;
+}
+
 html,
 body,
 #root {
@@ -13,6 +19,10 @@ body,
     outline: 2px solid var(--accent);
     outline-offset: 2px;
   }
+  /* programmatic focus after a tap or click (components/opener.ts): no ring for pointer users */
+  [data-pointer-focus]:focus-visible {
+    outline: none;
+  }
 }
 
 /* Tailwind's preflight leaves buttons with the default cursor: show the pointer on whatever acts */
@@ -22,4 +32,12 @@ button:not(:disabled),
 select:not(:disabled),
 summary {
   cursor: pointer;
+}
+
+/* centered dialog on wide screens (Sheet from md up); reduced motion removes the animation in the component */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
 }

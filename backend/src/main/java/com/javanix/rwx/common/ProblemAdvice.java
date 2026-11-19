@@ -51,6 +51,18 @@ class ProblemAdvice {
         return Problems.of(HttpStatus.NOT_FOUND, "not_found", "Not found.");
     }
 
+    @ExceptionHandler(GoneException.class)
+    ProblemDetail gone(GoneException ex) {
+        return Problems.of(HttpStatus.GONE, "gone", "The item was deleted.");
+    }
+
+    @ExceptionHandler(DuplicateException.class)
+    ProblemDetail duplicate(DuplicateException ex) {
+        var p = Problems.of(HttpStatus.CONFLICT, "duplicate", "Already in the library.");
+        p.setProperty("existingId", ex.existingId());
+        return p;
+    }
+
     private static ProblemDetail validation(List<Violation> errors) {
         var p = Problems.of(HttpStatus.BAD_REQUEST, "validation", "Invalid request.");
         p.setProperty("errors", errors);

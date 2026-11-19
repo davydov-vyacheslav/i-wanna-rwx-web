@@ -5,6 +5,8 @@ public interface MediaItem<R extends MediaRef> {
 
     R ref();
 
+    String title();
+
     /** The link {@code media} stores: the source's canonical URL for {@link #ref()}. */
     String externalLink();
 }

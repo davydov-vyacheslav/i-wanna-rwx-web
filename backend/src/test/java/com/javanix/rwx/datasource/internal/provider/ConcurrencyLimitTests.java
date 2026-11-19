@@ -52,7 +52,7 @@ class ConcurrencyLimitTests {
 
     @Test
     void theNinthConcurrentCallIsRejectedAndTheOtherEightSucceed() throws Exception {
-        wm.stubFor(get(urlPathEqualTo("/slow")).willReturn(aResponse().withBody("{}").withFixedDelay(1500)));
+        wm.stubFor(get(urlPathEqualTo("/slow")).willReturn(aResponse().withBody("{}").withFixedDelay(700)));
         var http = probe();
         var started = new CountDownLatch(8);
         try (var pool = Executors.newFixedThreadPool(8)) {
@@ -83,7 +83,7 @@ class ConcurrencyLimitTests {
 
     @Test
     void theLimitComesFromTheProperty() throws Exception {
-        wm.stubFor(get(urlPathEqualTo("/slow")).willReturn(aResponse().withBody("{}").withFixedDelay(800)));
+        wm.stubFor(get(urlPathEqualTo("/slow")).willReturn(aResponse().withBody("{}").withFixedDelay(400)));
         var http = probe("rwx.datasource.http.max-concurrent=1");
         try (var pool = Executors.newSingleThreadExecutor()) {
             var first = pool.submit(() -> http.slow());

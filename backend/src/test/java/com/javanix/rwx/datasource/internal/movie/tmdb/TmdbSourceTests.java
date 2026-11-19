@@ -1,5 +1,6 @@
 package com.javanix.rwx.datasource.internal.movie.tmdb;
 
+import static com.javanix.rwx.testkit.TestKeys.TMDB_KEY;
 import com.javanix.rwx.common.validators.HttpUrls;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
@@ -14,7 +15,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.github.tomakehurst.wiremock.http.Fault;
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.javanix.rwx.api.model.MovieSourceId;
-import java.net.URI;
 import com.javanix.rwx.testkit.TestKeys;
 import com.javanix.rwx.datasource.CatalogException.ProviderRateLimited;
 import com.javanix.rwx.datasource.CatalogException.ProviderTimeout;
@@ -39,9 +39,7 @@ import com.javanix.rwx.testkit.TestUsers.TestUser;
 import com.javanix.rwx.testkit.TestUsers;
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Optional;
-import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -58,7 +56,6 @@ class TmdbSourceTests {
     @RegisterExtension
     static WireMockExtension wm = WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
-    private static final String KEY = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0In0.tmdb_fixture_token_0123456789";
     private static final String SYN = "tmdb/synthetic/";
 
     @Autowired TestUsers users;
@@ -105,7 +102,7 @@ class TmdbSourceTests {
     void searchDropsPersonsAndMapsMoviesAndSeries() {
         ok("/configuration", "configuration.json");
         ok("/search/multi", "search-multi.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         var hits = source().search(user.id(), "matrix");
 
@@ -141,14 +138,14 @@ class TmdbSourceTests {
                     .append(i).append("\"}");
         }
         json("/search/multi", 200, "{\"page\":1,\"results\":[" + results + "]}");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         var hits = source().search(user.id(), "a&b c");
 
         assertThat(hits).hasSize(10);
         wm.verify(getRequestedFor(urlPathEqualTo("/3/search/multi")).withQueryParam("query", equalTo("a&b c"))
                 .withQueryParam("language", equalTo("en")).withQueryParam("include_adult", equalTo("false"))
-                .withHeader("Authorization", equalTo("Bearer " + KEY)).withHeader("User-Agent", equalTo("RWX/1.0 (ops@example.com)")));
+                .withHeader("Authorization", equalTo("Bearer " + TMDB_KEY)).withHeader("User-Agent", equalTo("RWX/1.0 (ops@example.com)")));
     }
 
     @Test
@@ -168,11 +165,11 @@ class TmdbSourceTests {
     void theLanguageIsTheUsersStoredLocale() {
         ok("/configuration", "configuration.json");
         ok("/search/multi", "search-multi.json");
-        var ru = userWithKey(KEY);
+        var ru = userWithKey(TMDB_KEY);
         users.setLocale(ru.id(), "ru");
-        var uk = userWithKey(KEY);
+        var uk = userWithKey(TMDB_KEY);
         users.setLocale(uk.id(), "uk");
-        var none = userWithKey(KEY);
+        var none = userWithKey(TMDB_KEY);
         var source = source();
 
         source.search(ru.id(), "dune");
@@ -189,10 +186,10 @@ class TmdbSourceTests {
         ok("/configuration", "configuration.json");
         ok("/search/multi", "search-multi.json");
         ok("/movie/603", "movie-603.json");
-        var ru = userWithKey(KEY);
+        var ru = userWithKey(TMDB_KEY);
         users.setLocale(ru.id(), "ru");
-        var en = userWithKey(KEY);
-        var enToo = userWithKey(KEY);
+        var en = userWithKey(TMDB_KEY);
+        var enToo = userWithKey(TMDB_KEY);
         var source = source();
 
         source.search(ru.id(), "matrix");
@@ -212,7 +209,7 @@ class TmdbSourceTests {
         json("/configuration", 200, """
                 {"images":{"secure_base_url":"https://image.tmdb.org/t/p/","poster_sizes":["w92","w154","w500","w185","original"]}}""");
         ok("/search/multi", "search-multi.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
         var source = source();
 
         // smallest size of at least 250 px, whatever the list order
@@ -231,7 +228,7 @@ class TmdbSourceTests {
     void anImageBaseOnAnotherHostIsNotTrusted() {
         json("/configuration", 200, "{\"images\":{\"secure_base_url\":\"https://evil.example/t/p/\",\"poster_sizes\":[\"w342\"]}}");
         ok("/search/multi", "search-multi.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         assertThat(source().search(user.id(), "x").getFirst().posterUrl()).startsWith("https://image.tmdb.org/t/p/w342/");
     }
@@ -242,7 +239,7 @@ class TmdbSourceTests {
     void aMovieResolvesWithItsOriginalTitleAndNoTvFields() {
         ok("/configuration", "configuration.json");
         ok("/movie/603", "movie-603.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         var item = source().resolve(user.id(), movie("603"));
 
@@ -263,7 +260,7 @@ class TmdbSourceTests {
     void aSeriesResolvesWithOriginalNameStatusAndSeasons() {
         ok("/configuration", "configuration.json");
         ok("/tv/1396", "tv-1396.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         var item = source().resolve(user.id(), tv("1396"));
 
@@ -282,7 +279,7 @@ class TmdbSourceTests {
         ok("/tv/61889", "tv-61889-canceled.json");
         ok("/tv/76479", "tv-76479-returning.json");
         ok("/tv/4242", "tv-4242-null-status.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
         var source = source();
 
         assertThat(source.resolve(user.id(), tv("1396")).tvStatus()).isEqualTo(TvStatus.ENDED);
@@ -300,7 +297,7 @@ class TmdbSourceTests {
         ok("/configuration", "configuration.json");
         ok("/tv/1396", "tv-1396.json");
         json("/movie/1396", 404, Fixtures.read(SYN + "error-404.json"));
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
         var source = source();
 
         assertThat(source.resolve(user.id(), tv("1396")).title()).isEqualTo("Breaking Bad");
@@ -313,7 +310,7 @@ class TmdbSourceTests {
     void aMovieWithoutPosterOrOverviewHasNeither() {
         ok("/configuration", "configuration.json");
         ok("/movie/4242", "movie-missing-poster.json");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         var item = source().resolve(user.id(), movie("4242"));
 
@@ -328,7 +325,7 @@ class TmdbSourceTests {
         ok("/configuration", "configuration.json");
         wm.stubFor(get(urlPathEqualTo("/3/search/multi")).willReturn(aResponse().withStatus(200)));
         wm.stubFor(get(urlPathEqualTo("/3/movie/9")).willReturn(aResponse().withStatus(200)));
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
         var source = source();
 
         assertThatThrownBy(() -> source.search(user.id(), "empty")).isInstanceOfSatisfying(CatalogException.ProviderError.class,
@@ -342,7 +339,7 @@ class TmdbSourceTests {
         ok("/configuration", "configuration.json");
         json("/tv/7", 200, "{\"name\":\"  \",\"number_of_seasons\":2}");
         json("/tv/8", 200, "{\"name\":\"X\",\"number_of_seasons\":-1,\"status\":\"Ended\"}");
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
         var source = source();
 
         assertThatThrownBy(() -> source.resolve(user.id(), tv("7"))).isInstanceOfSatisfying(CatalogException.ProviderError.class,
@@ -386,7 +383,7 @@ class TmdbSourceTests {
     @Test
     void aKeyMakesTheSourceAvailableForThatUserOnly() {
         var f = users.two();
-        TestKeys.save(repository, f.a().id(), "tmdb", KEY);
+        TestKeys.save(repository, f.a().id(), "tmdb", TMDB_KEY);
         ok("/configuration", "configuration.json");
         ok("/search/multi", "search-multi.json");
         var source = source();
@@ -402,26 +399,26 @@ class TmdbSourceTests {
         json("/configuration", 401, Fixtures.read(SYN + "error-401.json"));
         json("/search/multi", 401, Fixtures.read(SYN + "error-401.json"));
         json("/movie/603", 401, Fixtures.read(SYN + "error-401.json"));
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
         var source = source();
 
         assertThatThrownBy(() -> source.search(user.id(), "matrix")).isInstanceOf(SourceKeyInvalid.class)
                 .hasMessageNotContaining("Invalid API key")
                 .satisfies(e -> assertThat(((CatalogException) e).source()).isEqualTo("tmdb"));
-        assertThat(keys.keyOf(user.id(), source)).contains(KEY);
+        assertThat(keys.keyOf(user.id(), source)).contains(TMDB_KEY);
         assertThatThrownBy(() -> source.resolve(user.id(), movie("603"))).isInstanceOf(SourceKeyInvalid.class);
-        assertThat(keys.keyOf(user.id(), source)).as("a 401 never deletes the key").contains(KEY);
+        assertThat(keys.keyOf(user.id(), source)).as("a 401 never deletes the key").contains(TMDB_KEY);
     }
 
     @Test
     void aNetworkErrorIsATimeoutAndKeepsTheKey() {
         wm.stubFor(get(urlPathMatching("/3/.*")).willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         assertThatThrownBy(() -> source().search(user.id(), "matrix")).isInstanceOf(ProviderTimeout.class);
         assertThatThrownBy(() -> source().resolve(user.id(), movie("603"))).isInstanceOf(ProviderTimeout.class);
 
-        assertThat(keys.keyOf(user.id(), source())).contains(KEY);
+        assertThat(keys.keyOf(user.id(), source())).contains(TMDB_KEY);
     }
 
     @Test
@@ -429,7 +426,7 @@ class TmdbSourceTests {
         ok("/configuration", "configuration.json");
         wm.stubFor(get(urlPathEqualTo("/3/search/multi")).willReturn(aResponse().withStatus(429).withHeader("Retry-After", "7")));
         json("/movie/999", 404, Fixtures.read(SYN + "error-404.json"));
-        var user = userWithKey(KEY);
+        var user = userWithKey(TMDB_KEY);
 
         assertThatThrownBy(() -> source().search(user.id(), "matrix")).isInstanceOfSatisfying(ProviderRateLimited.class,
                 e -> assertThat(e.retryAfter()).isEqualTo(Duration.ofSeconds(7)));

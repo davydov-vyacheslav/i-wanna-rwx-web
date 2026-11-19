@@ -58,7 +58,7 @@ class MeController implements MeApi {
                 .orElseThrow(() -> new IllegalStateException("no settings contributor"));
         var exportedAt = OffsetDateTime.now(clock.withZone(ZoneOffset.UTC));
         var export = new AccountExport(exportedAt, mapper.toMe(id, accounts.profile(id)),
-                settings, flatten(c -> c.dataSources(id)));
+                settings, flatten(c -> c.dataSources(id)), flatten(c -> c.books(id)), flatten(c -> c.movies(id)));
         var disposition = ContentDisposition.attachment()
                 .filename("rwx-export-" + exportedAt.toLocalDate() + ".json").build();
         return ResponseEntity.ok().header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString()).body(export);

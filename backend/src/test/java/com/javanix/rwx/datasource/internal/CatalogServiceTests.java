@@ -6,7 +6,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.javanix.rwx.api.model.BookSourceId;
 import com.javanix.rwx.api.model.MovieSourceId;
 import com.javanix.rwx.datasource.BookRef;
-import com.javanix.rwx.datasource.CatalogException.ProviderError;
 import com.javanix.rwx.datasource.CatalogException.RateLimited;
 import com.javanix.rwx.datasource.CatalogException.SourceKeyMissing;
 import com.javanix.rwx.datasource.internal.book.BookCatalogService;

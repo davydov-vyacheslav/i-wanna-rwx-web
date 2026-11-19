@@ -33,6 +33,89 @@ CREATE INDEX idx_credentials_user_id ON credentials(user_id);
 CREATE INDEX idx_credentials_created_at ON credentials(created_at DESC);
 
 -- ============================================================================
+-- books: User's book library (Open Library items and drafts)
+-- ============================================================================
+CREATE TABLE books (
+  id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  author text,
+  year integer,
+  rating decimal(2,1),
+  status text NOT NULL DEFAULT 'planned',
+  is_favorite boolean NOT NULL DEFAULT false,
+  description text,
+  cover_url text,
+  isbn text,
+  source text NOT NULL,
+  external_id text NOT NULL,
+  external_link text NOT NULL,
+  version bigint NOT NULL DEFAULT 1,
+  deleted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id),
+  CONSTRAINT valid_status CHECK (status IN ('planned', 'seen')),
+  CONSTRAINT valid_rating CHECK (rating >= 0 AND rating <= 5),
+  CONSTRAINT valid_book_source CHECK (source IN ('draft', 'open_library')),
+  CONSTRAINT valid_book_external_id_length CHECK (char_length(external_id) BETWEEN 1 AND 1024),
+  CONSTRAINT valid_book_external_link_length CHECK (char_length(external_link) <= 4096),
+  CONSTRAINT valid_open_library_id CHECK (source <> 'open_library' OR external_id ~ '^OL[0-9]{1,12}W$')
+);
+
+-- Duplicate rules over live rows only (tombstones never block re-adding). See column comments for what an index cannot express.
+CREATE UNIQUE INDEX uq_books_user_isbn ON books(user_id, isbn)
+  WHERE deleted_at IS NULL AND isbn IS NOT NULL;
+CREATE UNIQUE INDEX uq_books_user_source_external_id ON books(user_id, source, external_id)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_books_updated_at ON books(user_id, updated_at DESC);
+CREATE INDEX idx_books_deleted_at ON books(deleted_at) WHERE deleted_at IS NOT NULL;
+
+-- ============================================================================
+-- movies: User's movies and TV shows library (TMDb items and drafts)
+-- ============================================================================
+CREATE TABLE movies (
+  id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  original_title text,
+  year integer,
+  rating decimal(3,1),
+  type text NOT NULL,
+  season_count integer,
+  tv_status text,
+  status text NOT NULL DEFAULT 'planned',
+  is_favorite boolean NOT NULL DEFAULT false,
+  description text,
+  poster_url text,
+  source text NOT NULL,
+  external_id text NOT NULL,
+  external_link text NOT NULL,
+  version bigint NOT NULL DEFAULT 1,
+  deleted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id),
+  CONSTRAINT valid_type CHECK (type IN ('movie', 'tv')),
+  CONSTRAINT valid_status CHECK (status IN ('planned', 'seen')),
+  CONSTRAINT valid_rating CHECK (rating >= 0 AND rating <= 10),
+  CONSTRAINT valid_tv_status CHECK (tv_status IN ('ongoing', 'ended')),
+  CONSTRAINT valid_movie_source CHECK (source IN ('draft', 'tmdb')),
+  CONSTRAINT valid_movie_external_id_length CHECK (char_length(external_id) BETWEEN 1 AND 1024),
+  CONSTRAINT valid_movie_external_link_length CHECK (char_length(external_link) <= 4096),
+  CONSTRAINT valid_tmdb_id CHECK (source <> 'tmdb' OR external_id ~ '^[1-9][0-9]{0,9}$'),
+  CONSTRAINT valid_draft_movie_type CHECK (source <> 'draft' OR type = 'movie')
+);
+
+-- Duplicate rules over live rows only. TMDb movie and tv ids are separate namespaces, hence type in the key.
+CREATE UNIQUE INDEX uq_movies_user_source_type_external_id ON movies(user_id, source, type, external_id)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_movies_updated_at ON movies(user_id, updated_at DESC);
+CREATE INDEX idx_movies_deleted_at ON movies(deleted_at) WHERE deleted_at IS NOT NULL;
+
+-- ============================================================================
 -- user_settings: User preferences (locale, timezone)
 -- ============================================================================
 CREATE TABLE user_settings (
@@ -116,3 +199,23 @@ COMMENT ON COLUMN user_default_sources.source IS 'Registered source id, per reso
 
 COMMENT ON TABLE user_source_keys IS 'The API key a user saved for a source that needs one (tmdb). Stored as is for now (owner decision: no encryption yet), so DB dumps and backups contain them in clear. Never returned to the client, never logged.';
 COMMENT ON COLUMN user_source_keys.source IS 'Registered source id that requires a key. Extending the list is an ALTER of the CHECK.';
+
+COMMENT ON TABLE books IS 'User book library. Identity of every item, a draft included, is (source, external_id); duplicate rules (media spec) among live rows: same isbn, or same (source, external_id). A draft external_id is its normalized title key (NFC, trimmed, case-folded; computed by the service, not reproducible in SQL), so two live drafts of one title are blocked by uq_books_user_source_external_id. A draft title that equals the title of a non-draft item is not an index and is checked by the service under the per-user write lock.';
+COMMENT ON COLUMN books.id IS 'Client-generated UUID, unique per user only: the key is (user_id, id), so ids of different users cannot collide.';
+COMMENT ON COLUMN books.isbn IS 'Normalized ISBN (no hyphens or spaces, uppercase X), first ISBN of the search hit. NULL for drafts. Immutable. Unique per user among live rows (uq_books_user_isbn); the service normalizes before storing.';
+COMMENT ON COLUMN books.source IS 'Where the item came from, closed list: draft (the user''s typed text, nothing fetched) or open_library. Immutable. Extending the list is an ALTER of valid_book_source.';
+COMMENT ON COLUMN books.external_id IS 'Provider id (Open Library work id OL<digits>W) or, for a draft, the normalized title key (TitleKey: NFC, trimmed, case-folded). Never NULL. Immutable. With source it is the identity, unique per user among live rows (uq_books_user_source_external_id).';
+COMMENT ON COLUMN books.external_link IS 'Canonical URL built by the server: the Open Library work page, or for a draft the Google search link of its title. Only where a tap goes and what the client compares by string; not an identity. Never NULL, at most 4096 characters. Immutable.';
+COMMENT ON COLUMN books.version IS 'Server-incremented bigint, 1 on creation, +1 per accepted change. Last write wins; informational for clients.';
+COMMENT ON COLUMN books.deleted_at IS 'Tombstone (description is nulled on delete). Hidden from reads, purged after 90 days. A tombstoned id is never recreated.';
+COMMENT ON TABLE movies IS 'User movies and TV shows library. Identity of every item, a draft included, is (source, type, external_id); duplicate rule (media spec) among live rows: same (source, type, external_id). A draft external_id is its normalized title key (NFC, trimmed, case-folded; computed by the service), so two live drafts of one title are blocked by uq_movies_user_source_type_external_id. A draft title that equals the title or original_title of a non-draft item is not an index and is checked by the service under the per-user write lock.';
+COMMENT ON COLUMN movies.id IS 'Client-generated UUID, unique per user only: the key is (user_id, id), so ids of different users cannot collide.';
+COMMENT ON COLUMN movies.original_title IS 'Original-language title from TMDb. Optional.';
+COMMENT ON COLUMN movies.tv_status IS 'TV only: ongoing or ended (TMDb Ended and Canceled map to ended). NULL = unknown or not tv.';
+COMMENT ON COLUMN movies.type IS 'movie or tv. CHECK constraint enforces valid values.';
+COMMENT ON COLUMN movies.season_count IS 'Number of seasons. For TV shows only. NULL for movies.';
+COMMENT ON COLUMN movies.source IS 'Where the item came from, closed list: draft (the user''s typed text, nothing fetched; type is always movie) or tmdb. Immutable. Extending the list is an ALTER of valid_movie_source.';
+COMMENT ON COLUMN movies.external_id IS 'Provider id (TMDb id, digits) or, for a draft, the normalized title key (TitleKey). Never NULL. Immutable. With source and type it is the identity, unique per user among live rows (uq_movies_user_source_type_external_id).';
+COMMENT ON COLUMN movies.external_link IS 'Canonical URL built by the server: the TMDb movie or tv page, or for a draft the Google search link of its title. Only where a tap goes and what the client compares by string; not an identity. Never NULL, at most 4096 characters. Immutable.';
+COMMENT ON COLUMN movies.version IS 'Server-incremented bigint, 1 on creation, +1 per accepted change. Last write wins; informational for clients.';
+COMMENT ON COLUMN movies.deleted_at IS 'Tombstone (description is nulled on delete). Hidden from reads, purged after 90 days. A tombstoned id is never recreated.';

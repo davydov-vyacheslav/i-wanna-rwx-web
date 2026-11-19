@@ -1,5 +1,6 @@
 package com.javanix.rwx.datasource.internal.web;
 
+import static com.javanix.rwx.testkit.TestKeys.TMDB_KEY;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -25,7 +26,6 @@ import com.javanix.rwx.datasource.CatalogException.SourceNotFound;
 import com.javanix.rwx.datasource.MovieRef;
 import com.javanix.rwx.datasource.MovieType;
 import com.javanix.rwx.datasource.internal.movie.tmdb.TmdbSource;
-import com.javanix.rwx.datasource.internal.provider.SourceInfo;
 import com.javanix.rwx.datasource.internal.provider.SourceKeyRejectedException;
 import com.javanix.rwx.datasource.internal.provider.SourceKeys;
 import com.javanix.rwx.datasource.internal.provider.TestClients;
@@ -130,7 +130,7 @@ class DataSourceProblemAdviceTests {
     static class TmdbWiring {
         @Bean
         SourceKeys keys() {
-            return (userId, source) -> Optional.of("eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0In0.tmdb_fixture_token_0123456789");
+            return (userId, source) -> Optional.of(TMDB_KEY);
         }
 
         @Bean

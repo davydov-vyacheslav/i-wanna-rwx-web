@@ -60,17 +60,23 @@ System font (SF on iOS). Dynamic Type is not available in PWAs, so sizes are fix
 
 ## 2. iOS-native-feel rules
 - Layout is `100dvh`, app shell does not scroll; one scroll region between top inset and tab bar. `overscroll-behavior: contain` so we do not fight iOS rubber-band or pull-to-refresh (series refresh is an explicit action, not pull).
+- Breakpoint: Tailwind `md` (768px). Below it the phone pattern (bottom tab bar, bottom sheets); from it the desktop pattern (left sidebar, centered dialogs). Done with `md:` classes only, no JS; the owner decision of 2026-11-19 is that RWX is no longer iOS-native-looking on wide screens.
+- Content width: the scroll region caps Settings and the lists at 36rem (`--column-w`), a centered column in the area right of the sidebar on wide screens (the sidebar is `--sidebar-w`, 14rem; both in `index.css`). Below `md` the tab bar is full width. The FAB sits 16px inside the column's right edge (24px above the window bottom) and toasts are centered on the column.
 - Safe areas: top padding `env(safe-area-inset-top)`; tab bar and sheet bottoms add `env(safe-area-inset-bottom)`. The FAB and toasts sit above the tab bar + inset.
 - Every tappable element >= 44x44 CSS px hit area (cards' heart/eye are 44x54, banner Retry and toast Undo 44 high, icon buttons 44). Visual glyphs may be smaller than the hit area.
-- No hover-only UI. Every secondary action has a visible path: swipe-to-delete is also in the detail sheet; long-press on the cover is the only "Copy link" path and is non-essential.
+- No hover-only UI. Every secondary action has a visible path: swipe-to-delete is also in the detail sheet. There is no long-press or "Copy link" path (owner decision 2026-11-19).
 - No `:hover` styles; use `:active` (pressed fill) and `:focus-visible` (2px accent outline) for keyboard/switch users.
-- Sheets: grabber, rounded 24 top corners, scrim tap closes, header has a text button (Close/Done) because swipe-down dismissal is not reliable in a PWA. Add sheet is full height; others are content height. Hash/route-backed so the Back gesture closes it.
-- Bottom tab bar: 4 tabs, icon + label, current tab in accent. Tapping the current tab scrolls to top (frontend behaviour). Reminders tab is shown disabled in prototypes only.
-- Tap targets that change data give immediate optimistic feedback; delete is immediate with a 4s Undo toast (spec: no confirmation).
+- Focus ring rule: the ring is for keyboard users. Focus that the app moves itself (into a sheet or dialog on open, back to the opener on close) uses `focusQuietly` (`components/opener.ts`): after a mouse or touch interaction the element gets `data-pointer-focus`, which hides the ring until it blurs; after any keyboard input (Escape, Enter, Tab) the ring stays. After a tap the search-field fallback target is not focused at all (its ring and the iOS keyboard would appear).
+- Card focus (owner decision): the card's open area (the big title/meta button) shows NO focus indicator at all, for pointer and keyboard users; it stays focusable. The other buttons (cover link, heart, eye, Delete) keep the global `:focus-visible` ring.
+- Sheets below `md`: grabber, rounded 24 top corners, scrim tap closes, header has a text button (Close/Done) because swipe-down dismissal is not reliable in a PWA. Add sheet is full height; others are content height. Hash/route-backed so the Back gesture closes it.
+- Dialogs from `md` up: the same Sheet component renders as a centered modal, `max-w-lg` (32rem), at most 85dvh with its own scroll and the footer pinned, all corners 24, 0.5px hairline, `0 12px 40px #0004` shadow, scrim, 160ms fade + scale from .96 (none under reduced motion), no grabber; the visual-viewport variables do not apply. The Add sheet is 85dvh high. ConfirmDialog is already a centered dialog (`max-w-sm`) and fades in the same way. Focus trap, Escape, scrim tap, inert stacking (preview over add) and focus return are unchanged.
+- Sidebar from `md` up replaces the tab bar (which is hidden): fixed 14rem column on the left, same three entries with the same icons and labels, icon beside label, 44px rows, current entry accent text on `accent-soft` with `aria-current="page"`.
+- Bottom tab bar (below `md`): 4 tabs, icon + label, current tab in accent. Tapping the current tab scrolls to top (frontend behaviour). Reminders tab is shown disabled in prototypes only.
+- Tap targets that change data give immediate optimistic feedback; delete asks for confirmation in a dialog and waits for the server (no Undo before Phase 5).
 
 ## 3. Components
 
-**List page**: large title + count label (`12 of 45`, or `45`; hidden when total = 0; `aria-live=polite`). Sticky row below: search field (44px) + filter button + sort button. Filter button: filled soft-orange with numeric badge when active; the default state (seen hidden) counts as 1. Movies adds a 3-segment control All / Movies / Series under the search row (a shortcut for the type filter; tapping the selected segment returns to All; the sheet therefore has no type row). FAB "+" bottom right.
+**List page**: large title + count label (`12 of 45`, or `45`; hidden when total = 0; `aria-live=polite`). Sticky row below (pinned to the top of the scroll region while the list scrolls; it is a sibling of the title, not inside it): search field (44px) + filter button + sort button. Filter button: filled soft-orange with numeric badge when active; the default state (seen hidden) counts as 1. Movies adds a 3-segment control All / Movies / Series under the search row (a shortcut for the type filter; tapping the selected segment returns to All; the sheet therefore has no type row). FAB "+" bottom right.
 
 **List card** (spec: cover 80x108): cover button (opens source page) | text area (opens detail) | heart + eye column.
 - Text: type icon (orange; grey for drafts) + title (max 2 lines), year or em dash, star + rating or `N/A`, author or "No author", TV line `Status: Ended • 3 seasons`, badges.
@@ -82,11 +88,13 @@ System font (SF on iOS). Dynamic Type is not available in PWAs, so sizes are fix
 
 **Tri-state filter row** (whole 52px row is the target): 28px box + label + word. States cycle Any -> Only -> Hide -> Any. Any = empty outline; Only = accent fill + check; Hide = danger fill + minus. `role=checkbox`, `aria-checked` false/true/mixed. "Ended" appears only when type = Series and resets to Any otherwise. Sheet header: Reset (left, returns to default = seen hidden), Done (right); primary footer button `Show 6 of 8` shows the live result count.
 
+**More menu** (Movies only): a button after Sort opens a bottom sheet with the list's extra actions; one action today (Refresh series status). Failures show inline in that sheet.
+
 **Sort menu**: bottom sheet with two radio rows (Title A-Z, Recently changed), check on the active one. Same sheet pattern as filters, consistent with the rest of the app instead of a native popover.
 
-**Search bars**: list search is on-list (title substring). Add-sheet search: text field, line "Searching in Open Library" (provider picker only when 2+ providers), hint `Type at least 3 characters` below 3, spinner while debouncing, max 10 results. Result row: cover 60x80, title, year/star/rating, author, tick on the right when already in library (row disabled). Below results (as soon as there is any text): "Can't find it?" + draft row `Add "text" as draft`.
+**Search bars**: list search is on-list (title substring). Add-sheet search: text field, line "Searching in Open Library" (provider picker only when 2+ providers), hint `Type at least 3 characters` below 3, spinner while debouncing, max 10 results. One state line (offline / unavailable / key explanation / source). Result row: cover 60x80, title, year/star/rating, author, tick on the right when already in library (row highlighted, not selectable); an info button opens the preview sheet. The last row is always the draft entry `Add "text" as draft` (shown as soon as there is any text; hidden when the text equals a title already in the library, where only "Already in your library" shows if nothing else is listed).
 
-**Sheet modal**: see section 2. **Item detail**: cover 104x140, title, meta, badges, full scrollable description, then pills Favorite / Seen / Open source page / Delete. Opens from a tap on the card text area even when there is no description (shows "No description.") because the actions live there; this deviates from the spec's "only when a description exists" and should be confirmed.
+**Sheet modal**: see section 2. **Item detail**: cover 104x140, title, meta, badges, full scrollable description, then pills Favorite / Seen / Open source page / Delete. Opens from a tap on the card text area even when there is no description (shows "No description.") because the actions live there; this is the confirmed behaviour of the `media` spec.
 
 **States** (all in the prototypes)
 | State | Treatment |
@@ -98,7 +106,7 @@ System font (SF on iOS). Dynamic Type is not available in PWAs, so sizes are fix
 | Sync pending | blue banner with spinner "Syncing 3 changes"; per-card amber dot |
 | Sync error | red banner "2 changes could not sync" + Retry (44px) |
 | Load error | full-area state with Retry |
-| Search error | red toast inside the sheet, results cleared (spec: 3 s) |
+| Search error | red inline message above the results inside the sheet, per-kind wording naming the source, local draft stays |
 | No TMDb key | add sheet explains and links to Settings; draft still works |
 | Push denied | Settings row chip "Blocked" plus instructions for iOS Settings (the app cannot re-prompt) |
 | Not installed | Settings explains push needs the Home Screen app (iOS 16.4+) and opens the 3 install steps |
@@ -117,4 +125,4 @@ System font (SF on iOS). Dynamic Type is not available in PWAs, so sizes are fix
 - Keyboard: Tab reaches every control, Enter/Space activate, Escape closes a sheet. Focus is visible (`:focus-visible`, 2px accent outline).
 - Headings keep a proper hierarchy; the list count is announced via `aria-live=polite`.
 - iOS Home Screen: notch and home-indicator insets via `env(safe-area-inset-*)`. Notifications work only in the installed app (iOS 16.4+), have no action buttons, and a tap opens the reminder detail.
-- Android and desktop: same layout; sheets may render as centred modals on wide screens.
+- Android phones: same layout as iOS. Wide screens (>= md): sidebar and centered dialogs, see section 3.
