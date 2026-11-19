@@ -263,7 +263,8 @@ class ProviderClientsTests {
         wm.stubFor(get(urlPathEqualTo("/3/search/multi")).willReturn(aResponse()
                 .withFault(Fault.MALFORMED_RESPONSE_CHUNK)));
         assertThatThrownBy(() -> probeAt(wm.baseUrl() + "/3").search("very-private-query", "Bearer very-secret-api-key"))
-                .isInstanceOfAny(ProviderTimeout.class, ProviderError.class)
+                // a cut-off body surfaces as ProviderTimeout/ProviderError or, depending on the OS, as the client's own RestClientException (advice maps it to 502)
+                .isInstanceOfAny(ProviderTimeout.class, ProviderError.class, RestClientException.class)
                 .satisfies(e -> assertThat(e.toString() + e.getMessage() + e.getCause()).doesNotContain("secret", "private", "search"));
         assertThat(output.getAll()).doesNotContain("very-secret-api-key").doesNotContain("very-private-query");
     }

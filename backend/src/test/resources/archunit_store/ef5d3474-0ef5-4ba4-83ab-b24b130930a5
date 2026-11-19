@@ -1,0 +1,4 @@
+com.javanix.rwx.datasource.internal.book.BookSource has exactly one implementation
+com.javanix.rwx.datasource.internal.movie.MovieSource has exactly one implementation
+com.javanix.rwx.datasource.internal.provider.SourceKeys has exactly one implementation
+com.javanix.rwx.identity.CurrentUserProvider has exactly one implementation

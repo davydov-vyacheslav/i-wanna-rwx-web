@@ -1,0 +1,2 @@
+com.javanix.rwx.datasource.CatalogException is not used outside com.javanix.rwx.datasource
+com.javanix.rwx.identity.NotAuthenticatedException is not used outside com.javanix.rwx.identity
