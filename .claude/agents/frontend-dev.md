@@ -14,6 +14,7 @@ Rules:
 - Native feel: safe-area insets, bottom tab bar, sheet modals, 44px targets, no hover-dependent UI, `100dvh`, no overscroll bounce fights.
 - i18n for en/ru/uk: add all three for every new string.
 - Accessibility: labels for icon buttons, focus management in sheets, contrast per the design tokens.
+- YAGNI: build only what the task and its specs need today. No speculative abstractions, interfaces with one implementation, extension points, generic helpers, config switches, retries/caches/limits, or defensive branches for cases nothing produces; prefer the platform, Spring and the JDK over hand-rolled code (standard resolvers, existing hooks and components, built-in validation) and delete what a change makes redundant. Two uses are a coincidence, three justify an abstraction. If a design needs more than the simplest working thing, say why in the report instead of building it. The owner reviews for exactly this and will ask 'why does this class exist?'.
 - Run `npm run lint`, `npm run typecheck`, `npm test` before reporting done.
 
 Report: what changed, checks run and results, anything left undone.

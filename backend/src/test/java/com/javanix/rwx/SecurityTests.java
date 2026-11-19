@@ -16,14 +16,14 @@ class SecurityTests {
     @Autowired TestUsers users;
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v1/me", "PATCH,/api/v1/me", "DELETE,/api/v1/me", "GET,/api/v1/me/export",
+    @CsvSource({"GET,/api/v1/me", "DELETE,/api/v1/me", "GET,/api/v1/me/export",
             "GET,/api/v1/settings", "PATCH,/api/v1/settings"})
     void anonymousIsProblem401(String method, String path) {
         api.send(HttpMethod.valueOf(method), path, "{}").expectProblem(401, "unauthorized");
     }
 
     @ParameterizedTest
-    @CsvSource({"POST,/api/v1/auth/logout", "PATCH,/api/v1/me", "DELETE,/api/v1/me", "PATCH,/api/v1/settings"})
+    @CsvSource({"POST,/api/v1/auth/logout", "DELETE,/api/v1/me", "PATCH,/api/v1/settings"})
     void mutationWithoutCsrfTokenIsProblem403AndChangesNothing(String method, String path) {
         var user = users.create();
         api.as(user).noCsrf().send(HttpMethod.valueOf(method), path, "{}").expectProblem(403, "csrf");
@@ -32,7 +32,7 @@ class SecurityTests {
 
     @Test
     void csrfIsCheckedBeforeAuthentication() {
-        api.noCsrf().send(HttpMethod.POST, "/api/v1/books", "{}").expectProblem(403, "csrf");
+        api.noCsrf().send(HttpMethod.PUT, "/api/v1/data-sources/movie/tmdb/default", null).expectProblem(403, "csrf");
     }
 
     @Test

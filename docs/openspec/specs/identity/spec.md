@@ -9,42 +9,15 @@ Who the acting user is, how they authenticate, and how their data is isolated.
 ## Requirements
 
 ### Requirement: Current user abstraction
-Domain modules SHALL obtain the acting user only through the published `CurrentUserProvider` (user id, IANA timezone), resolved from the security context on every call, and SHALL NOT read user or credential storage or authentication configuration. When there is no user, the provider SHALL signal not-authenticated, mapped to a 401 problem response.
-
-#### Scenario: No user
-- **WHEN** a request has no session
-- **THEN** the response is 401 `application/problem+json` and no handler runs
-
-#### Scenario: Module independence
-- **WHEN** media or reminders need the user id
-- **THEN** they call `CurrentUserProvider` only and never import identity internals
+Domain modules SHALL obtain the acting user only through the published `CurrentUserProvider` (user id), resolved from the security context on every call, and SHALL NOT read user or credential storage or authentication configuration. A user that no longer exists or is disabled SHALL be treated as not authenticated. When there is no user, the provider SHALL signal not-authenticated, mapped to a 401 problem response.
 
 ### Requirement: Current user endpoint
-`GET /api/v1/me` SHALL return the user id, display name (GitHub name, falling back to the login), avatar URL (nullable), `timeZone` and `locale` (nullable). `PATCH /api/v1/me` SHALL update `timeZone` and `locale` (the same stored values as `/settings`).
-
-#### Scenario: Signed in
-- **WHEN** a signed-in client calls `GET /api/v1/me`
-- **THEN** the response has the user's id, GitHub login and avatar URL
-
-#### Scenario: Signed out
-- **WHEN** the client calls `GET /api/v1/me` without a valid session
-- **THEN** the response is 401 and the client shows the login screen
-
-### Requirement: User timezone and locale
-A user SHALL have an IANA timezone (default `UTC`) and an optional locale (`en`, `ru`, `uk` by device locale), stored in `user_settings` and changed via `PATCH /api/v1/settings` (`timeZone`, `locale`). A timezone not in the JDK zone list SHALL be rejected with 400 and leave the stored value unchanged. A change SHALL publish `UserTimezoneChanged(userId, old, new)`, which reminders consumes to recompute notification times. The client SHALL send its resolved device timezone on app open only when it differs from the cached value.
-
-#### Scenario: Invalid zone
-- **WHEN** the client sends timezone `Mars/Base`
-- **THEN** the response is 400 and the stored zone is unchanged
-
-#### Scenario: Zone change
-- **WHEN** the user changes timezone
-- **THEN** `UserTimezoneChangedEvent` is published and identity does not call reminders directly
+`GET /api/v1/me` SHALL return the user id, display name (GitHub name, falling back to the login) and avatar URL (nullable). It SHALL carry no settings.
 
 ### Requirement: Per-user data isolation
 Every user-owned table SHALL carry `user_id` and every query SHALL be scoped by it; repositories of user data SHALL expose only user-scoped finders. Accessing another user's record SHALL return 404, never 403. Every module SHALL have an integration test with two users (A and B) that exercises each endpoint with B against A's resource ids and expects 404 without data leakage.
 
-Exception: `DELETE /api/v1/push-subscriptions/{id}` is idempotent and returns 204 for an unknown id and for another user's id alike, without deleting the foreign row. A push subscription id carries no user data and is not shown in any list, and a uniform 204 leaks nothing about existence. Every other endpoint returns 404.
+Every endpoint returns 404 for another user's resource id. (The push phase may add a documented idempotent exception for deleting a push subscription, see `docs/openspec/changes/push-notifications/`.)
 
 #### Scenario: Cross-user read
 - **WHEN** user B requests a record id owned by user A
@@ -140,7 +113,7 @@ Automated tests SHALL authenticate without any production bypass: a helper under
 - **THEN** the only way to obtain a session is the GitHub callback
 
 ### Requirement: Account data export and deletion
-A signed-in user SHALL be able to delete the account (`DELETE /api/v1/me`, from Settings with a confirmation); the user and all of the user's data SHALL be deleted (cascade), push subscriptions removed, and the session ended. Deletion is permanent. Before that, the user SHALL be able to export all own data (`GET /api/v1/me/export`, from Settings): a machine-readable JSON download of the profile, settings, books, movies, subscriptions and licenses (license keys included, since it is the owner's own data and the request is authenticated), live records only; it never includes the TMDb key or session data. The export is a data-portability duty of open sign-up, not a media feature.
+A signed-in user SHALL be able to delete the account (`DELETE /api/v1/me`, from Settings with a confirmation); the user and all of the user's data SHALL be deleted (cascade) and the session ended. Deletion is permanent. Before that, the user SHALL be able to export all own data (`GET /api/v1/me/export`, from Settings): a machine-readable JSON download of the profile, settings and chosen default data sources; media items and reminders join the export in their phases (license keys included then, since it is the owner's own data and the request is authenticated); it never includes a data source API key or session data. The export is a data-portability duty of open sign-up, not a media feature.
 
 #### Scenario: Export
 - **WHEN** the user requests the export

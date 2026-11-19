@@ -1,0 +1,29 @@
+{
+  "numFound": 1,
+  "start": 0,
+  "numFoundExact": true,
+  "num_found": 1,
+  "documentation_url": "https://openlibrary.org/dev/docs/api/search",
+  "q": "key:/works/OL27482W",
+  "offset": null,
+  "docs": [
+    {
+      "author_name": [
+        "J.R.R. Tolkien"
+      ],
+      "cover_i": 14627509,
+      "first_publish_year": 1937,
+      "isbn": [
+        "9788422615866",
+        "9780739410745",
+        "0320036871",
+        "9780810910607",
+        "9780008627782",
+        "1328497593"
+      ],
+      "key": "/works/OL27482W",
+      "title": "The Hobbit",
+      "ratings_average": 4.2946954
+    }
+  ]
+}

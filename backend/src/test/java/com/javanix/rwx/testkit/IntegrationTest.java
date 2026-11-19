@@ -16,8 +16,8 @@ import org.springframework.test.context.event.RecordApplicationEvents;
  * <p>Testkit, reused by every module: inject {@link Api} and {@link TestUsers}.
  * <pre>{@code
  * var f = users.two();                                        // users A and B, each with a real session
- * api.as(f.a()).post("/api/v1/books", body).expect(201);      // CSRF token is added to non-GET calls
- * api.as(f.b()).get("/api/v1/books/" + id).expectNotFound();  // isolation check: 404 problem+json
+ * api.as(f.a()).patch("/api/v1/settings", body).expect(200);  // CSRF token is added to non-GET calls
+ * api.as(f.b()).get("/api/v1/settings").expect(200);          // isolation check: B sees only B's record
  * api.get("/api/v1/me").expectProblem(401, "unauthorized");   // anonymous
  * api.as(f.a()).noCsrf().delete(path).expectProblem(403, "csrf");
  * }</pre>

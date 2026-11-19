@@ -11,7 +11,7 @@ The PWA must work offline on iOS (no Background Sync, evictable IndexedDB). Serv
 - Pull by opaque cursor; last-write-wins (LWW) per record by arrival order; tombstones for deletes.
 
 ## Already in place (not part of the remaining work)
-- Schema in `V001__initial_schema.sql`: `version`, `change_seq` (global sequence stamped by a trigger on insert and update), `deleted_at` on the four synced tables, and `applied_mutations`.
+- Schema in `V001__initial_schema.sql` (re-added in this phase, removed in the Phase 2 cleanup): `version`, `change_seq` (global sequence stamped by a trigger on insert and update), `deleted_at` on the four synced tables, and `applied_mutations`.
 - Contract in `api/openapi.yaml`: `POST /api/v1/sync/push` and `GET /api/v1/sync/pull`, with `Mutation`, `MutationResult`, `SyncChange` and the page response. Also `/push-subscriptions` (register, delete) for Web Push.
 - Target behaviour in `docs/openspec/specs/offline-sync/spec.md`.
 

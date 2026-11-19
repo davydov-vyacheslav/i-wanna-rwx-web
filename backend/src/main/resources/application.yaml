@@ -29,6 +29,29 @@ spring:
     jdbc:
       initialize-schema: never
     timeout: 30d
+  http:
+    # the provider clients: fixed origin (operator-configurable below), never follow a redirect
+    serviceclient:
+      open-library:
+        base-url: ${rwx.datasource.books.open-library.base-url:https://openlibrary.org}
+        connect-timeout: 3s
+        read-timeout: 8s
+        redirects: dont-follow
+      tmdb:
+        base-url: ${rwx.datasource.movies.tmdb.base-url:https://api.themoviedb.org/3}
+        connect-timeout: 3s
+        read-timeout: 8s
+        redirects: dont-follow
+
+rwx:
+  datasource:
+    # contact for the provider User-Agent (email or URL); an empty value fails startup
+    contact: ${RWX_DATASOURCE_CONTACT:}
+    # default source per type, stored for every new user; must be a registered source of that type
+    books:
+      default: open_library
+    movies:
+      default: tmdb
 
 server:
   # behind Traefik: lets the session cookie get Secure from X-Forwarded-Proto, plain http on localhost

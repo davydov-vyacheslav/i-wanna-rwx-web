@@ -95,7 +95,7 @@ Changing a reminder's pattern to `lifetime` SHALL cancel its pending notificatio
 - **THEN** no notification is sent for it afterwards
 
 ### Requirement: Push delivery
-Notifications SHALL be Web Push (VAPID) sent only when the user has enabled push (`pushNotificationsEnabled`). Web Push on iOS has no action buttons: tapping the notification SHALL open the reminder, where the user presses "Renewed". If the user has not enabled notifications, the app SHALL show a one-time hint and nothing more (no repeated prompts, no fallback channel). Notifications SHALL NOT be sent while the server cannot reach the user's push endpoint; nothing is queued client-side.
+Notifications SHALL be Web Push (VAPID) sent only when the user has enabled push (the stored push preference, which the Push phase adds to the user's settings). Web Push on iOS has no action buttons: tapping the notification SHALL open the reminder, where the user presses "Renewed". If the user has not enabled notifications, the app SHALL show a one-time hint and nothing more (no repeated prompts, no fallback channel). Notifications SHALL NOT be sent while the server cannot reach the user's push endpoint; nothing is queued client-side.
 
 #### Scenario: Notification tap
 - **WHEN** the user taps a push notification

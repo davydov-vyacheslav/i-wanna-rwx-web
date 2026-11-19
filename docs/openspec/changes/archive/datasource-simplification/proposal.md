@@ -1,0 +1,35 @@
+# Datasource simplification
+
+Phase 2 (user settings and data sources). Statements below about `media` consumers (create path, `MediaValidator`, `TitleKey` in `media.internal`) describe the design for Phase 3; `media` is not in the tree in Phase 2.
+
+Owner decisions that remove emulation and duplication in module `datasource`. No API, schema or spec behaviour change.
+
+## Changes
+- `Text.trim` is `String.strip()`; the ECMAScript whitespace table is gone. The frontend twin keeps native `trim()`. The two differ on U+00A0, U+2007, U+202F, U+FEFF (JS only) and U+001C-001F (Java only), so the shared vectors in `api/test-vectors/source-urls.json` no longer contain whitespace cases of those characters. Removed: `titleKey` `NBSP Dune NBSP`, `FEFF Dune FEFF`, `U+001C Dune`; `draftLinks.accept` "NBSP trimmed"; `draftLinks.reject` "blank q after trim" (`%20%C2%A0`). The file `description` says so. Visible effect: a draft text with only a surrounding NBSP is no longer trimmed on the server.
+- `StrictUrl` is renamed `SourceUrl` and reduced to a `java.net.URI` parse: http/https, non-empty host, at most 4096 characters, scheme and host lowercased; exposes scheme, host, port (-1 if absent), userInfo, rawPath, rawQuery. Each source's `recognize` rejects userinfo, a non-default port and any host outside its set (so a trailing dot); `DraftLink.parse` does its own printable-ASCII, userinfo and port checks and keeps its behaviour (draft vectors unchanged).
+- `BookRef(source, externalId)` and `MovieRef(source, type, externalId)` no longer carry `canonicalUrl`. The source builds it (`BookSource.canonicalUrl(BookRef)`, `MovieSource.canonicalUrl(MovieRef)`); search hits carry `sourceUrl`; `BookItem` and `MovieItem` have `externalLink` right after `ref`.
+- `MediaRef`, `MediaItem<R>` and `MediaResolver<R, I>` unify the two catalogs; `BookCatalog` and `MovieCatalog` stay as named sub-interfaces. `BookCatalogService` and `MovieCatalogService` share `internal.provider.CatalogService` (the typed source set stays in `book` and `movie`, `provider` depends on neither).
+
+## Spec delta
+None: `docs/openspec/specs` states none of Text JS parity, StrictUrl rules or `canonicalUrl` on refs. Design wording in `media-search` and `media-core` was corrected.
+
+## Round 2
+
+`BookCatalog` / `MovieCatalog` are removed (consumers inject `MediaResolver<R, I>` parameterized). `Text` is deleted (JDK `Normalizer` and `strip()` inline; a private code point cut in `CatalogNormalizer`). `SourceUrl` is deleted in favour of `java.net.URI` plus the helper `SourceUrls.parse`. `DraftLink` is built on `URLEncoder`, `URLDecoder` and Spring's `UriComponentsBuilder`. Behaviour and the shared vectors are unchanged, with one edge: a draft link whose text contains a literal U+FFFD is no longer parsed (URLDecoder cannot tell it from invalid UTF-8).
+
+## Round 3
+
+The draft source lives in `com.javanix.rwx.datasource.internal.draft`, next to `internal.book` and `internal.movie` (owner decision, replacing the earlier public package `datasource.draft` with a named interface). `DraftLink` and `TitleKey` (moved from `media.internal`, with their tests; the shared vectors are unchanged) are package-private there, as are `BookDraftResolver` and `MovieDraftResolver` (Spring beans, both extending the package-private `AbstractDraftResolver`). What `media` needs is the published interface `com.javanix.rwx.datasource.DraftResolver<R extends MediaRef, I extends MediaItem<R>>` in the datasource root: `Optional<I> draft(String sourceUrl)` (parses the link and builds the whole item: title = the text, `externalLink` = the canonical link, ref source `DRAFT`, `externalId` = the title key; no I/O, user or key), `Optional<String> normalizeText(String)`, `String link(String)` (IllegalArgumentException for an invalid text), `String titleKey(String)` and the constant `MAX_TEXT_CODE_POINTS` (200). It deliberately does not extend `MediaResolver`: a draft has nothing to `resolve` (the lowercased key cannot restore the text), and a method that always throws `UnsupportedOperationException` is a worse contract than a separate type. Being a different generic type, it also removes the injection clash with the provider catalogs, so `@Primary` on `BookCatalogService`/`MovieCatalogService` and injection by concrete class are gone: `media` injects `DraftResolver<BookRef, BookItem>` / `DraftResolver<MovieRef, MovieItem>` by generic type and imports nothing from `datasource.internal`; `media`'s `allowedDependencies` is back to plain `datasource`. Why internal plus one published interface: the rules and the link format are datasource's to own (datasource must not depend on `media`), while `media` only needs the operations, not the classes. Drafts are never in `SourceDirectory`, `SourceInfo` beans, `/data-sources`, `user_default_sources`, `user_source_keys` or settings (`DraftWiringTests`). `BookService` and `MovieService` ask the draft resolver first (the source resolver joins in media-search DS-B7). U+FFFD joins the forbidden characters of the draft text rules (backend and the frontend twin `draftText`), so `build` and `parse` agree (before, only `parse` rejected it). `PackageStructureTests` forbids `provider`, `book`, `movie` depending on `draft` and `draft` depending on `provider`, `book` or `movie`.
+
+Spec delta: none; `docs/openspec/specs` does not state the draft text rules or the class placement.
+
+## Round 5
+
+Owner decision; supersedes the Round 3 `DraftResolver` interface and the `TitleKey` move. The draft source is an ordinary `MediaResolver<BookRef, BookItem>` / `MediaResolver<MovieRef, MovieItem>`; the published `DraftResolver` is deleted.
+
+- `identify(url)` returns a ref with source `DRAFT` and `externalId` = the normalized draft text (NFC, strip, 1..200 code points, case preserved, U+FFFD and control characters rejected). `resolve(userId, ref)` does no I/O, ignores the user and needs no key: title = the text, `externalLink` = `DraftLink.build(text)`, ref unchanged; it throws `IllegalArgumentException` for an invalid text or a non-draft source.
+- Distinguishing the beans: `MediaResolver.DRAFT = "draft"` is a published qualifier constant. The draft beans carry `@Qualifier(MediaResolver.DRAFT)`; the provider catalogs are `@Primary`, so an unqualified `MediaResolver<BookRef, BookItem>` is the provider catalog and `media` injects drafts with the qualifier. Drafts are not `SourceInfo`: not in `SourceDirectory`, `/data-sources` or user rows.
+- `TitleKey` returns to `media.internal` with its tests and the `titleKey` vectors. A draft's stored `external_id` stays `TitleKey.of(text)`, computed in `media` (so a ref's `externalId` differs from the stored one for drafts; `media` maps between them). `DraftLink` stays in `datasource.internal.draft` with the `draftLinks`/`draftLinkBuild` vectors.
+- `MediaValidator` validates a stored draft through `resolve` on a ref built from the stored title, comparing link and key; same violations as before.
+
+Spec delta: none (schema, API and the client twin are unchanged).

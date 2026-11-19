@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "api:gen": "openapi-typescript ../api/openapi.yaml -o src/api/schema.d.ts",
+    "api:gen": "openapi-typescript ../api/openapi.yaml --default-non-nullable false -o src/api/schema.d.ts",
     "api:lint": "redocly lint ../api/openapi.yaml --config ../api/redocly.yaml",
     "predev": "npm run api:gen",
     "dev": "vite",
@@ -15,11 +15,12 @@
     "pretypecheck": "npm run api:gen",
     "typecheck": "tsc -b",
     "pretest": "npm run api:gen",
-    "test": "vitest"
+    "test": "vitest",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",
-    "dexie": "4.4.7",
     "openapi-fetch": "0.17.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
@@ -36,10 +37,10 @@
     "@vitejs/plugin-react": "6.3.0",
     "eslint": "10.15.0",
     "eslint-plugin-react-hooks": "7.1.1",
-    "fake-indexeddb": "6.2.8",
     "globals": "17.14.0",
     "jsdom": "31.0.1",
     "openapi-typescript": "7.13.0",
+    "prettier": "3.10.1",
     "tailwindcss": "4.3.5",
     "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",

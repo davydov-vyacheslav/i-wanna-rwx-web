@@ -33,6 +33,7 @@ services:
       # empty values make the app fail at startup with a clear message
       RWX_GITHUB_CLIENT_ID: ${RWX_GITHUB_CLIENT_ID:-}
       RWX_GITHUB_CLIENT_SECRET: ${RWX_GITHUB_CLIENT_SECRET:-}
+      RWX_DATASOURCE_CONTACT: ${RWX_DATASOURCE_CONTACT:-}
     ports:
       - "127.0.0.1:8080:8080"
     # no healthcheck: the JRE image has no curl/wget

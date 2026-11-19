@@ -1,0 +1,330 @@
+{
+ "description": "Used by the Java tests (backend datasource and common). The titleKey vectors and the frontend twins return with the media phases (Phase 3). Edit only together with the implementations that read them. Whitespace vectors cover only characters that Java String.strip() and JavaScript trim() both treat the same way; characters on which they differ (U+00A0, U+2007, U+202F, U+FEFF, U+001C-001F, U+0085) are deliberately not covered. Strings use JSON escapes where a character is invisible.",
+ "draftLinks": {
+  "accept": [
+   {
+    "name": "plain",
+    "url": "https://www.google.com/search?q=Dune",
+    "title": "Dune",
+    "link": "https://www.google.com/search?q=Dune"
+   },
+   {
+    "name": "cyrillic percent-encoded",
+    "url": "https://www.google.com/search?q=%D0%81%D0%BB%D0%BA%D0%B0",
+    "title": "Ёлка",
+    "link": "https://www.google.com/search?q=%D0%81%D0%BB%D0%BA%D0%B0"
+   },
+   {
+    "name": "plus is a space",
+    "url": "https://www.google.com/search?q=The+Hobbit",
+    "title": "The Hobbit",
+    "link": "https://www.google.com/search?q=The%20Hobbit"
+   },
+   {
+    "name": "percent 20 is a space",
+    "url": "https://www.google.com/search?q=The%20Hobbit",
+    "title": "The Hobbit",
+    "link": "https://www.google.com/search?q=The%20Hobbit"
+   },
+   {
+    "name": "extra parameters dropped",
+    "url": "https://www.google.com/search?hl=ru&q=%D0%81%D0%BB%D0%BA%D0%B0&source=x",
+    "title": "Ёлка",
+    "link": "https://www.google.com/search?q=%D0%81%D0%BB%D0%BA%D0%B0"
+   },
+   {
+    "name": "fragment dropped",
+    "url": "https://www.google.com/search?q=Dune#top",
+    "title": "Dune",
+    "link": "https://www.google.com/search?q=Dune"
+   },
+   {
+    "name": "default port allowed",
+    "url": "https://www.google.com:443/search?q=Dune",
+    "title": "Dune",
+    "link": "https://www.google.com/search?q=Dune"
+   },
+   {
+    "name": "uppercase scheme and host",
+    "url": "HTTPS://WWW.GOOGLE.COM/search?q=Dune",
+    "title": "Dune",
+    "link": "https://www.google.com/search?q=Dune"
+   },
+   {
+    "name": "encoded ampersand question hash",
+    "url": "https://www.google.com/search?q=a%26b%3Fc%23d",
+    "title": "a&b?c#d",
+    "link": "https://www.google.com/search?q=a%26b%3Fc%23d"
+   },
+   {
+    "name": "plus sign encoded",
+    "url": "https://www.google.com/search?q=C%2B%2B",
+    "title": "C++",
+    "link": "https://www.google.com/search?q=C%2B%2B"
+   },
+   {
+    "name": "NFD input stored as NFC",
+    "url": "https://www.google.com/search?q=Cafe%CC%81",
+    "title": "Café",
+    "link": "https://www.google.com/search?q=Caf%C3%A9"
+   },
+   {
+    "name": "surrounding spaces trimmed",
+    "url": "https://www.google.com/search?q=++Dune%20",
+    "title": "Dune",
+    "link": "https://www.google.com/search?q=Dune"
+   },
+   {
+    "name": "emoji ZWJ sequence kept",
+    "url": "https://www.google.com/search?q=%F0%9F%91%A8%E2%80%8D%F0%9F%91%A9%E2%80%8D%F0%9F%91%A7",
+    "title": "👨‍👩‍👧",
+    "link": "https://www.google.com/search?q=%F0%9F%91%A8%E2%80%8D%F0%9F%91%A9%E2%80%8D%F0%9F%91%A7"
+   },
+   {
+    "name": "reserved characters in link",
+    "url": "https://www.google.com/search?q=Don%27t%20Panic%21%20%28v2%29%2A",
+    "title": "Don't Panic! (v2)*",
+    "link": "https://www.google.com/search?q=Don%27t%20Panic%21%20%28v2%29%2A"
+   },
+   {
+    "name": "unreserved marks stay",
+    "url": "https://www.google.com/search?q=a-b.c_d~e",
+    "title": "a-b.c_d~e",
+    "link": "https://www.google.com/search?q=a-b.c_d~e"
+   },
+   {
+    "name": "200 code points",
+    "url": "https://www.google.com/search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "title": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "link": "https://www.google.com/search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   }
+  ],
+  "reject": [
+   {
+    "name": "http scheme",
+    "url": "http://www.google.com/search?q=x"
+   },
+   {
+    "name": "suffix host",
+    "url": "https://www.google.com.evil.com/search?q=x"
+   },
+   {
+    "name": "prefix host",
+    "url": "https://evilwww.google.com/search?q=x"
+   },
+   {
+    "name": "bare google.com",
+    "url": "https://google.com/search?q=x"
+   },
+   {
+    "name": "userinfo",
+    "url": "https://www.google.com@evil.com/search?q=x"
+   },
+   {
+    "name": "empty userinfo",
+    "url": "https://@www.google.com/search?q=x"
+   },
+   {
+    "name": "port 8443",
+    "url": "https://www.google.com:8443/search?q=x"
+   },
+   {
+    "name": "trailing dot host",
+    "url": "https://www.google.com./search?q=x"
+   },
+   {
+    "name": "path with trailing slash",
+    "url": "https://www.google.com/search/?q=x"
+   },
+   {
+    "name": "path /url",
+    "url": "https://www.google.com/url?q=x"
+   },
+   {
+    "name": "path case",
+    "url": "https://www.google.com/Search?q=x"
+   },
+   {
+    "name": "encoded path",
+    "url": "https://www.google.com/%73earch?q=x"
+   },
+   {
+    "name": "two q",
+    "url": "https://www.google.com/search?q=a&q=b"
+   },
+   {
+    "name": "no q",
+    "url": "https://www.google.com/search?hl=en"
+   },
+   {
+    "name": "no query",
+    "url": "https://www.google.com/search"
+   },
+   {
+    "name": "blank q",
+    "url": "https://www.google.com/search?q="
+   },
+   {
+    "name": "q without value",
+    "url": "https://www.google.com/search?q"
+   },
+   {
+    "name": "201 code points",
+    "url": "https://www.google.com/search?q=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+   },
+   {
+    "name": "NUL",
+    "url": "https://www.google.com/search?q=a%00b"
+   },
+   {
+    "name": "newline",
+    "url": "https://www.google.com/search?q=a%0Ab"
+   },
+   {
+    "name": "tab",
+    "url": "https://www.google.com/search?q=a%09b"
+   },
+   {
+    "name": "malformed percent sequence",
+    "url": "https://www.google.com/search?q=%E0%A4"
+   },
+   {
+    "name": "truncated percent",
+    "url": "https://www.google.com/search?q=ab%2"
+   },
+   {
+    "name": "non-hex percent",
+    "url": "https://www.google.com/search?q=ab%zz"
+   },
+   {
+    "name": "overlong utf-8",
+    "url": "https://www.google.com/search?q=%C0%AF"
+   },
+   {
+    "name": "backslash",
+    "url": "https://www.google.com\\search?q=x"
+   },
+   {
+    "name": "backslash in query",
+    "url": "https://www.google.com/search?q=a\\b"
+   },
+   {
+    "name": "raw space",
+    "url": "https://www.google.com/search?q=a b"
+   },
+   {
+    "name": "raw non-ASCII",
+    "url": "https://www.google.com/search?q=Ёлка"
+   },
+   {
+    "name": "javascript scheme",
+    "url": "javascript:alert(1)"
+   },
+   {
+    "name": "ftp scheme",
+    "url": "ftp://www.google.com/search?q=x"
+   },
+   {
+    "name": "relative",
+    "url": "/search?q=x"
+   },
+   {
+    "name": "empty",
+    "url": ""
+   },
+   {
+    "name": "over 4096 characters",
+    "url": "https://www.google.com/search?q=a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20a%20"
+   }
+  ]
+ },
+ "draftLinkBuild": [
+  {
+   "text": "Dune",
+   "link": "https://www.google.com/search?q=Dune"
+  },
+  {
+   "text": "a b",
+   "link": "https://www.google.com/search?q=a%20b"
+  },
+  {
+   "text": "!'()*",
+   "link": "https://www.google.com/search?q=%21%27%28%29%2A"
+  },
+  {
+   "text": "a&b=c?d#e+f/g%h",
+   "link": "https://www.google.com/search?q=a%26b%3Dc%3Fd%23e%2Bf%2Fg%25h"
+  },
+  {
+   "text": "Ёлка",
+   "link": "https://www.google.com/search?q=%D0%81%D0%BB%D0%BA%D0%B0"
+  },
+  {
+   "text": "Café",
+   "link": "https://www.google.com/search?q=Caf%C3%A9"
+  },
+  {
+   "text": "  Dune ",
+   "link": "https://www.google.com/search?q=Dune"
+  },
+  {
+   "text": "😀",
+   "link": "https://www.google.com/search?q=%F0%9F%98%80"
+  }
+ ],
+ "providerUrls": {
+  "note": "Consumed by the datasource source recognizers (backend ProviderUrlVectorTests). canonical is the stored externalLink (also the externalLink of a search result).",
+  "open_library": {
+   "accept": [
+    {
+     "url": "https://openlibrary.org/works/OL45804W",
+     "canonical": "https://openlibrary.org/works/OL45804W"
+    },
+    {
+     "url": "https://openlibrary.org/works/OL45804W/Fantastic_Mr._Fox?edition=ia%3Afoo",
+     "canonical": "https://openlibrary.org/works/OL45804W"
+    },
+    {
+     "url": "http://www.openlibrary.org/works/OL1W#x",
+     "canonical": "https://openlibrary.org/works/OL1W"
+    }
+   ],
+   "reject": [
+    "https://openlibrary.org/books/OL1M",
+    "https://openlibrary.org/works/OL0W",
+    "https://openlibrary.org/works/OL1234567890123W",
+    "https://openlibrary.org/works/OL1",
+    "https://openlibrary.org.evil.com/works/OL1W",
+    "https://openlibrary.org@evil.com/works/OL1W",
+    "https://openlibrary.org:8443/works/OL1W",
+    "https://openlibrary.org./works/OL1W",
+    "https://openlibrary.org/search?q=x"
+   ]
+  },
+  "tmdb": {
+   "accept": [
+    {
+     "url": "https://www.themoviedb.org/movie/603",
+     "canonical": "https://www.themoviedb.org/movie/603"
+    },
+    {
+     "url": "http://www.themoviedb.org/tv/1396-breaking-bad/season/1?language=ru-RU#x",
+     "canonical": "https://www.themoviedb.org/tv/1396"
+    },
+    {
+     "url": "https://themoviedb.org/movie/27205-inception",
+     "canonical": "https://www.themoviedb.org/movie/27205"
+    }
+   ],
+   "reject": [
+    "https://themoviedb.org/movie/603abc",
+    "https://www.themoviedb.org/movie/0603",
+    "https://www.themoviedb.org/movie/12345678901",
+    "https://www.themoviedb.org/person/287",
+    "https://www.themoviedb.org.evil.com/movie/603",
+    "https://www.themoviedb.org@evil.com/movie/603",
+    "https://www.themoviedb.org:8443/movie/603"
+   ]
+  }
+ }
+}
