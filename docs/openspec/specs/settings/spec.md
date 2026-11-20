@@ -126,4 +126,4 @@ Module `settings` SHALL own one settings record per user (IANA timezone default 
 - **THEN** the response is 400 and nothing changes
 
 ### Requirement: Published preferences
-The module SHALL publish `SettingsService.get(userId)` returning an immutable `UserSettingsView` (the stored locale is never empty; an unknown user is an error) for other modules. `UserTimezones` and `UserTimezoneChangedEvent` are not published yet: they return with the reminders module, the first consumer.
+The module SHALL publish `SettingsService.get(userId)` returning an immutable `UserSettingsView` (the stored locale is never empty; an unknown user is an error) for other modules. `UserTimezones` and `UserTimezoneChangedEvent` are not published yet: they return with the scheduler in Phase 6 (the reminders module of Phase 4 does not use the stored timezone on the server).

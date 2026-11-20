@@ -48,7 +48,12 @@ describe('AppShell', () => {
       sidebar()
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Books', 'Movies', 'Settings'])
+    ).toEqual(['Books', 'Movies', 'Reminders', 'Subscriptions', 'Licenses', 'Settings'])
+    expect(
+      tabs()
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Books', 'Movies', 'Reminders', 'Settings'])
     for (const nav of [sidebar(), tabs()])
       expect(nav.getByRole('button', { name: 'Books' }).getAttribute('aria-current')).toBe('page')
     await screen.findByRole('heading', { name: 'Books' })
@@ -67,10 +72,10 @@ describe('AppShell', () => {
     expect(sidebar().getByRole('button', { name: 'Movies' }).className).toContain('text-accent')
   })
 
-  it('renders three tabs; Books is current at first', async () => {
+  it('renders four tabs; Books is current at first', async () => {
     mount()
     const buttons = tabs().getAllByRole('button')
-    expect(buttons.map((b) => b.textContent)).toEqual(['Books', 'Movies', 'Settings'])
+    expect(buttons.map((b) => b.textContent)).toEqual(['Books', 'Movies', 'Reminders', 'Settings'])
     expect(tabs().getByRole('button', { name: 'Books' }).getAttribute('aria-current')).toBe('page')
     expect(buttons.filter((b) => b.hasAttribute('aria-current'))).toHaveLength(1)
     await screen.findByRole('heading', { name: 'Books' })
@@ -134,7 +139,7 @@ describe('AppShell', () => {
   })
 
   it('a corrupt stored value opens Books', async () => {
-    localStorage.setItem('rwx.tab.u1', 'reminders')
+    localStorage.setItem('rwx.tab.u1', 'bogus')
     mount()
     await screen.findByRole('heading', { name: 'Books' })
     expect(tabs().getByRole('button', { name: 'Books' }).getAttribute('aria-current')).toBe('page')
@@ -158,12 +163,10 @@ describe('AppShell', () => {
 
   it('tab labels follow the locale', () => {
     mount('uk')
-    for (const nav of screen.getAllByRole('navigation'))
-      expect(
-        within(nav)
-          .getAllByRole('button')
-          .map((b) => b.textContent),
-      ).toEqual(['Книги', 'Фільми', 'Налаштування'])
+    const [side, bottom] = screen.getAllByRole('navigation').map((nav) => within(nav))
+    const labels = (nav: ReturnType<typeof within>) => nav.getAllByRole('button').map((b: HTMLElement) => b.textContent)
+    expect(labels(bottom!)).toEqual(['Книги', 'Фільми', 'Нагадування', 'Налаштування'])
+    expect(labels(side!)).toEqual(['Книги', 'Фільми', 'Нагадування', 'Підписки', 'Ліцензії', 'Налаштування'])
   })
 
   it('the tab bar sits in the safe area (tab target size is a ux-review item: jsdom has no layout)', () => {

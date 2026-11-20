@@ -62,6 +62,11 @@ export const TrashIcon = () => (
     <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
   </Svg>
 )
+export const ColumnSortIcon = ({ dir }: { dir?: 'asc' | 'desc' }) => (
+  <Svg size={12}>
+    <path d={dir === 'desc' ? 'm6 9 6 6 6-6' : dir === 'asc' ? 'm6 15 6-6 6 6' : 'm8 9 4-4 4 4M8 15l4 4 4-4'} />
+  </Svg>
+)
 export const SearchIcon = ({ size }: { size?: number }) => (
   <Svg size={size}>
     <circle cx="11" cy="11" r="7" />
@@ -118,5 +123,40 @@ export const MoreIcon = () => (
     <circle cx="5" cy="12" r="1" />
     <circle cx="12" cy="12" r="1" />
     <circle cx="19" cy="12" r="1" />
+  </Svg>
+)
+
+export const XCircleIcon = () => (
+  <Svg size={12}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="m9 9 6 6M15 9l-6 6" />
+  </Svg>
+)
+export const ClockAlertIcon = () => (
+  <Svg size={12}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7v5M12 15.500v.01" />
+  </Svg>
+)
+export const InfinityIcon = () => (
+  <Svg size={12}>
+    <path d="M12 12c-2-3-3.500-4-5.500-4a4 4 0 0 0 0 8c2 0 3.500-1 5.500-4zm0 0c2 3 3.500 4 5.500 4a4 4 0 0 0 0-8c-2 0-3.500 1-5.500 4z" />
+  </Svg>
+)
+export const CalendarIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <rect x="3" y="5" width="18" height="16" rx="2" />
+    <path d="M3 10h18M8 3v4M16 3v4" />
+  </Svg>
+)
+export const KeyIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <circle cx="8" cy="15" r="4" />
+    <path d="m11 12 9-9m-3 3 3 3" />
+  </Svg>
+)
+export const BellIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" />
   </Svg>
 )

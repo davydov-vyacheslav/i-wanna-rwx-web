@@ -2,23 +2,30 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import type { ApiClient } from '../../api/client'
 import { t, type Locale, type MessageKey } from '../../i18n'
 import type { Me } from '../identity/useMe'
-import { BookIcon, FilmIcon, GearIcon } from '../media/icons'
+import { BellIcon, BookIcon, FilmIcon, GearIcon } from '../media/icons'
 import { BooksScreen } from '../media/BooksScreen'
 import { MoviesScreen } from '../media/MoviesScreen'
 import { prefersReducedMotion } from '../media/motion'
+import { useRemindersState } from '../reminders/listState'
+import { RemindersScreen } from '../reminders/RemindersScreen'
+import type { ReminderType } from '../reminders/types'
 import { SettingsScreen } from '../settings/SettingsScreen'
 
-export type Tab = 'books' | 'movies' | 'settings'
+export type Tab = 'books' | 'movies' | 'reminders' | 'settings'
 
 const TABS: { id: Tab; label: MessageKey; icon: ReactNode }[] = [
   { id: 'books', label: 'nav.books', icon: <BookIcon size={24} /> },
   { id: 'movies', label: 'nav.movies', icon: <FilmIcon size={24} /> },
+  { id: 'reminders', label: 'nav.reminders', icon: <BellIcon size={24} /> },
   { id: 'settings', label: 'nav.settings', icon: <GearIcon size={24} /> },
 ]
 
 function parseTab(id: string | null): Tab | undefined {
   return TABS.find((x) => x.id === id)?.id
 }
+
+/** Hash path parts without `#/`: `#/reminders/licenses` -> ['reminders', 'licenses']. */
+const hashParts = () => window.location.hash.replace(/^#\/?/, '').split('/')
 
 const tabKey = (userId: string) => `rwx.tab.${userId}`
 
@@ -31,17 +38,17 @@ function storedTab(userId: string): Tab | undefined {
 }
 
 /**
- * Current tab. The URL hash (`#/movies`) wins, so the Back gesture and reloads keep it; without one the last
+ * Current tab. The first hash segment (`#/movies`, `#/reminders/licenses`) wins, so the Back gesture and reloads keep it; without one the last
  * active tab of this user on this device is restored; first launch, a missing or corrupt value -> Books.
  */
-function useTab(userId: string): [Tab, (tab: Tab) => void] {
+function useTab(userId: string, segment: ReminderType): [Tab, (tab: Tab) => void] {
   const [launchTab] = useState<Tab>(() => storedTab(userId) ?? 'books')
-  const [tab, setTab] = useState<Tab>(() => parseTab(window.location.hash.replace(/^#\/?/, '')) ?? launchTab)
+  const [tab, setTab] = useState<Tab>(() => parseTab(hashParts()[0] ?? null) ?? launchTab)
   useEffect(() => {
     // the only history entry without a hash is the launch one, so an empty hash (Back to it) means the launch tab
     const onHash = () => {
-      const hash = window.location.hash.replace(/^#\/?/, '')
-      setTab(hash ? (parseTab(hash) ?? 'books') : launchTab)
+      const [first] = hashParts()
+      setTab(first ? (parseTab(first) ?? 'books') : launchTab)
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
@@ -53,11 +60,33 @@ function useTab(userId: string): [Tab, (tab: Tab) => void] {
       // storage blocked: the tab just stays in memory
     }
   }, [userId, tab])
-  const select = useCallback((next: Tab) => {
-    setTab(next)
-    window.history.pushState(null, '', `#/${next}`)
-  }, [])
+  // the Reminders route always carries its segment
+  const select = useCallback(
+    (next: Tab) => {
+      setTab(next)
+      window.history.pushState(null, '', next === 'reminders' ? `#/reminders/${segment}` : `#/${next}`)
+    },
+    [segment],
+  )
   return [tab, select]
+}
+
+/**
+ * Keeps the segment and the hash of the Reminders tab in step: a segment in the hash (deep link, Back) becomes the
+ * remembered one; a bare or unknown `#/reminders` is rewritten to the remembered segment.
+ */
+function useReminderRoute(segment: ReminderType, setSegment: (s: ReminderType) => void) {
+  useEffect(() => {
+    const adopt = () => {
+      const [first, second] = hashParts()
+      if (first !== 'reminders') return
+      if (second === 'subscriptions' || second === 'licenses') setSegment(second)
+      else window.history.replaceState(null, '', `#/reminders/${segment}`)
+    }
+    adopt()
+    window.addEventListener('hashchange', adopt)
+    return () => window.removeEventListener('hashchange', adopt)
+  }, [segment, setSegment])
 }
 
 /** One tab's screen: hidden (display none) and inert while inactive, so it is neither focusable nor announced. */
@@ -76,13 +105,17 @@ function TabPane({ active, children }: { active: boolean; children: ReactNode })
 function TabNav({
   variant,
   tab,
+  segment,
   locale,
   onTab,
+  onSegment,
 }: {
   variant: 'bar' | 'sidebar'
   tab: Tab
+  segment: ReminderType
   locale: Locale
   onTab: (tab: Tab) => void
+  onSegment: (segment: ReminderType) => void
 }) {
   const bar = variant === 'bar'
   return (
@@ -105,13 +138,32 @@ function TabNav({
                 onClick={() => onTab(x.id)}
                 className={
                   bar
-                    ? `text-tab flex min-h-14 w-full flex-col items-center justify-center gap-0.5 px-1 active:opacity-70 ${current ? 'text-accent font-semibold' : 'text-ink-2'}`
+                    ? `text-[10px] min-[375px]:text-tab flex min-h-14 w-full flex-col items-center justify-center gap-0.5 px-1 active:opacity-70 ${current ? 'text-accent font-semibold' : 'text-ink-2'}`
                     : `text-input flex min-h-11 w-full items-center gap-3 rounded-md px-3 active:opacity-70 ${current ? 'bg-accent-soft text-accent font-semibold' : 'text-ink-2'}`
                 }
               >
                 {x.icon}
                 <span className="max-w-full truncate">{t(locale, x.label)}</span>
               </button>
+              {!bar && x.id === 'reminders' && (
+                <ul aria-label={t(locale, 'reminders.segments')} className="mt-1 flex flex-col gap-1 pl-9">
+                  {(['subscriptions', 'licenses'] as const).map((key) => {
+                    const on = current && segment === key
+                    return (
+                      <li key={key}>
+                        <button
+                          type="button"
+                          aria-current={on ? 'true' : undefined}
+                          onClick={() => onSegment(key)}
+                          className={`text-body flex min-h-9 w-full items-center rounded-md px-3 active:opacity-70 ${on ? 'bg-accent-soft text-accent font-semibold' : 'text-ink-2'}`}
+                        >
+                          <span className="max-w-full truncate">{t(locale, `reminders.${key}`)}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </li>
           )
         })}
@@ -129,9 +181,13 @@ function TabNav({
  * it on switch. Tapping the current tab scrolls the region to the top.
  */
 export function AppShell({ me, api, locale }: { me: Me; api?: ApiClient; locale: Locale }) {
-  const [tab, select] = useTab(me.id)
+  const reminders = useRemindersState({ userId: me.id, api })
+  const { segment } = reminders.state
+  const { setSegment } = reminders
+  const [tab, select] = useTab(me.id, segment)
+  useReminderRoute(segment, setSegment)
   const region = useRef<HTMLElement>(null)
-  const offsets = useRef<Record<Tab, number>>({ books: 0, movies: 0, settings: 0 })
+  const offsets = useRef<Record<Tab, number>>({ books: 0, movies: 0, reminders: 0, settings: 0 })
   const [visited, setVisited] = useState<readonly Tab[]>([tab])
   // mount on first visit (state adjusted during render, the documented pattern: React re-renders at once)
   if (!visited.includes(tab)) setVisited([...visited, tab])
@@ -150,9 +206,20 @@ export function AppShell({ me, api, locale }: { me: Me; api?: ApiClient; locale:
     region.current?.scrollTo?.({ top: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
   }
 
+  function onSegment(next: ReminderType) {
+    setSegment(next)
+    // a view mode of the tab: Back leaves the tab, not the previous segment
+    window.history.replaceState(null, '', `#/reminders/${next}`)
+  }
+  // the sidebar's sub-items work from any tab
+  function openSegment(next: ReminderType) {
+    if (tab !== 'reminders') onTab('reminders')
+    onSegment(next)
+  }
+
   return (
     <div className="bg-bg text-ink flex h-dvh flex-col overflow-hidden md:flex-row">
-      <TabNav variant="sidebar" tab={tab} locale={locale} onTab={onTab} />
+      <TabNav variant="sidebar" tab={tab} segment={segment} locale={locale} onTab={onTab} onSegment={openSegment} />
       <main
         ref={region}
         onScroll={(e) => {
@@ -160,7 +227,8 @@ export function AppShell({ me, api, locale }: { me: Me; api?: ApiClient; locale:
         }}
         className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
       >
-        <div className="mx-auto w-full max-w-[var(--column-w)]">
+        {/* the reminders table needs more width than the phone column; the FAB offset follows --column-w */}
+        <div className={`mx-auto w-full max-w-[var(--column-w)] ${tab === 'reminders' ? 'md:[--column-w:60rem]' : ''}`}>
           {visited.includes('books') && (
             <TabPane active={tab === 'books'}>
               <BooksScreen locale={locale} userId={me.id} api={api} />
@@ -171,6 +239,17 @@ export function AppShell({ me, api, locale }: { me: Me; api?: ApiClient; locale:
               <MoviesScreen locale={locale} userId={me.id} api={api} />
             </TabPane>
           )}
+          {visited.includes('reminders') && (
+            <TabPane active={tab === 'reminders'}>
+              <RemindersScreen
+                locale={locale}
+                api={api}
+                state={reminders.state}
+                onSegment={onSegment}
+                onExpiring={reminders.setExpiring}
+              />
+            </TabPane>
+          )}
           {visited.includes('settings') && (
             <TabPane active={tab === 'settings'}>
               <SettingsScreen me={me} api={api} locale={locale} />
@@ -178,7 +257,7 @@ export function AppShell({ me, api, locale }: { me: Me; api?: ApiClient; locale:
           )}
         </div>
       </main>
-      <TabNav variant="bar" tab={tab} locale={locale} onTab={onTab} />
+      <TabNav variant="bar" tab={tab} segment={segment} locale={locale} onTab={onTab} onSegment={openSegment} />
     </div>
   )
 }

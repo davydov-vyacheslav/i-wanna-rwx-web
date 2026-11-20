@@ -2,7 +2,9 @@ package com.javanix.rwx.identity;
 
 import com.javanix.rwx.api.model.Book;
 import com.javanix.rwx.api.model.DefaultDataSource;
+import com.javanix.rwx.api.model.License;
 import com.javanix.rwx.api.model.Movie;
+import com.javanix.rwx.api.model.Subscription;
 import com.javanix.rwx.api.model.UserSettings;
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +32,15 @@ public interface AccountExportContributor {
     }
 
     default List<Movie> movies(UUID userId) {
+        return List.of();
+    }
+
+    default List<Subscription> subscriptions(UUID userId) {
+        return List.of();
+    }
+
+    /** Includes the license key in plaintext (accepted trade-off until the Security phase). */
+    default List<License> licenses(UUID userId) {
         return List.of();
     }
 }

@@ -11,6 +11,14 @@ Local setup and manual smoke checks that automated tests cannot do.
 
 V001 is edited in place until the first deploy. After such an edit the local DB must be recreated, or Flyway rejects the checksum: `docker compose -f deploy/docker/docker-compose.yml down -v`, then `up --build`.
 
+## Dev dataset
+
+After signing in once, fill the account with varied books, movies, subscriptions and licenses (all urgency states, lifetime, long and Cyrillic titles, drafts and source items):
+
+`docker compose -f deploy/docker/docker-compose.yml exec -T postgres psql -U rwx -v ON_ERROR_STOP=1 -f - < deploy/docker/dev-seed.sql`
+
+It targets the newest user who signed in with GitHub (`-v user_id=<uuid>` for another), is safe to re-run (it replaces its own fixed-id rows and refreshes the reminder dates relative to today) and leaves your other rows alone. Books and movies from Open Library and TMDb are real works (ids, links, covers, posters); the rest are drafts. A credential-less self-test user (`11111111-1111-1111-1111-111111111111`, seeded the same way) lives in the local DB for data checks; nobody can sign in as it. Plain SQL on purpose: there is no dev login or seeding code in the app.
+
 ## Smoke checks
 
 - `GET /actuator/health` returns 200 `{"status":"UP"}`; `/` shows the login page when signed out.

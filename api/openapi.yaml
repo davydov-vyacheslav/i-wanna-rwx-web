@@ -24,6 +24,10 @@ tags:
     description: Books (add, list, edit, delete)
   - name: movies
     description: Movies and TV shows (add, list, edit, delete)
+  - name: subscriptions
+    description: Subscriptions with expiry, renewal pattern and remind days
+  - name: licenses
+    description: Licenses (like subscriptions, plus an optional license key)
   - name: search
     description: Keyword search over the data sources (Open Library for books, TMDb for movies and TV), with canonical source URLs
   - name: me
@@ -326,6 +330,343 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # ===== SUBSCRIPTIONS =====
+  /api/v1/subscriptions:
+    get:
+      tags: [subscriptions]
+      operationId: listSubscriptions
+      summary: List user's subscriptions
+      description: All live subscriptions of the user as a bare array (no filter, sort or paging; the client orders and filters the list).
+      responses:
+        '200':
+          description: List of subscriptions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [subscriptions]
+      operationId: createSubscription
+      summary: Create a subscription
+      description: |
+        The client sends a client-generated `id`. Idempotent by id: a live subscription with the same id returns 200 with the stored record (the body is ignored; changes go through PATCH).
+        A pattern other than `lifetime` needs `expiryDate`, and `custom` needs a positive `customRenewalDays` (400 `validation` otherwise).
+        An id that was deleted returns 410 `gone` and recreates nothing. There is no duplicate rule: two subscriptions may share a name (409 is not returned).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubscriptionRequest'
+      responses:
+        '200':
+          description: A live subscription with this id already exists; returned unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '201':
+          description: Subscription created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+  /api/v1/subscriptions/{id}:
+    get:
+      tags: [subscriptions]
+      operationId: getSubscription
+      summary: Get subscription details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [subscriptions]
+      operationId: updateSubscription
+      summary: Update subscription
+      description: Partial update; absent properties are unchanged. The merged record must satisfy the same rules as create (expiry required except `lifetime`, positive `customRenewalDays` for `custom`; 400 `validation`). Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSubscriptionRequest'
+      responses:
+        '200':
+          description: Subscription updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+    delete:
+      tags: [subscriptions]
+      operationId: deleteSubscription
+      summary: Delete subscription
+      description: Tombstones the subscription. Idempotent (deleting a deleted subscription is 204); an unknown or another user's id is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Subscription deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/subscriptions/{id}/renew:
+    post:
+      tags: [subscriptions]
+      operationId: renewSubscription
+      summary: Renew a subscription (expiry plus one renewal period)
+      description: |
+        Carries the expiry date the client saw (`expectedExpiryDate`). If it equals the current expiry the new expiry is computed and saved (200 with the record); if it differs the call is a no-op and returns the current record with 200 (a stale repeat never renews twice).
+        `lifetime` and `none` are rejected with 400 `validation`. Unknown or another user's id is 404; a deleted id is 410.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenewRequest'
+      responses:
+        '200':
+          description: Subscription renewed, or unchanged when the expected date was stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+
+  # ===== LICENSES =====
+  /api/v1/licenses:
+    get:
+      tags: [licenses]
+      operationId: listLicenses
+      summary: List user's licenses
+      description: All live licenses of the user as a bare array (no filter, sort or paging; the client orders and filters the list). The license key is returned to the owner in the response and is never logged.
+      responses:
+        '200':
+          description: List of licenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/License'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags: [licenses]
+      operationId: createLicense
+      summary: Create a license
+      description: |
+        The client sends a client-generated `id`. Idempotent by id: a live license with the same id returns 200 with the stored record (the body is ignored; changes go through PATCH).
+        A pattern other than `lifetime` needs `expiryDate`, and `custom` needs a positive `customRenewalDays` (400 `validation` otherwise).
+        An id that was deleted returns 410 `gone` and recreates nothing. There is no duplicate rule: two licenses may share a name (409 is not returned).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateLicenseRequest'
+      responses:
+        '200':
+          description: A live license with this id already exists; returned unchanged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '201':
+          description: License created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+  /api/v1/licenses/{id}:
+    get:
+      tags: [licenses]
+      operationId: getLicense
+      summary: Get license details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: License details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    patch:
+      tags: [licenses]
+      operationId: updateLicense
+      summary: Update license
+      description: Partial update; absent properties are unchanged. The merged record must satisfy the same rules as create (expiry required except `lifetime`, positive `customRenewalDays` for `custom`; 400 `validation`). Unknown or another user's id is 404; a deleted id is 410. Identical content changes neither `version` nor `updatedAt`.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateLicenseRequest'
+      responses:
+        '200':
+          description: License updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
+    delete:
+      tags: [licenses]
+      operationId: deleteLicense
+      summary: Delete license
+      description: Tombstones the license. Idempotent (deleting a deleted license is 204); an unknown or another user's id is 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: License deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/licenses/{id}/renew:
+    post:
+      tags: [licenses]
+      operationId: renewLicense
+      summary: Renew a license (expiry plus one renewal period)
+      description: |
+        Carries the expiry date the client saw (`expectedExpiryDate`). If it equals the current expiry the new expiry is computed and saved (200 with the record); if it differs the call is a no-op and returns the current record with 200 (a stale repeat never renews twice).
+        `lifetime` and `none` are rejected with 400 `validation`. Unknown or another user's id is 404; a deleted id is 410.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenewRequest'
+      responses:
+        '200':
+          description: License renewed, or unchanged when the expected date was stale
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/License'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Gone'
+
   # ===== SETTINGS =====
   /api/v1/settings:
     get:
@@ -448,7 +789,7 @@ paths:
       tags: [me]
       operationId: exportMe
       summary: Export all data of the current account
-      description: Machine-readable copy of everything the user owns (profile, settings, chosen default data sources, books and movies; reminders join the export in their phase) as a JSON download. Never includes a data source API key or session data.
+      description: Machine-readable copy of everything the user owns (profile, settings, chosen default data sources, books, movies, subscriptions and licenses including license keys) as a JSON download. Never includes a data source API key or session data.
       responses:
         '200':
           description: Account data
@@ -1000,6 +1341,265 @@ components:
       enum: [en, ru, uk]
       description: Supported UI languages; the one list shared by the settings record, PATCH /settings and the sign-up choice.
 
+    # ===== SUBSCRIPTIONS =====
+    Subscription:
+      type: object
+      required: [id, userId, name, expiryDate, renewalPattern, remindDays, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+          description: YYYY-MM-DD. Null only for renewalPattern lifetime (never expires)
+        renewalPattern:
+          type: string
+          enum: [monthly, yearly, lifetime, custom, none]
+        customRenewalDays:
+          type: integer
+          minimum: 1
+          maximum: 36500
+          description: Required (positive) for the custom renewal pattern
+        remindDays:
+          type: integer
+          minimum: 1
+          maximum: 14
+          description: Days before expiry to notify
+        cost:
+          type: string
+          description: e.g., "$20/mo"
+        description:
+          type: string
+          maxLength: 20000
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreateSubscriptionRequest:
+      type: object
+      description: |
+        A subscription as composed by the client.
+        `expiryDate` may be omitted or null only for `lifetime`; `custom` needs a positive `customRenewalDays`.
+      required: [id, name, renewalPattern, remindDays]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated record id
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+        renewalPattern:
+          type: string
+          enum: [monthly, yearly, lifetime, custom, none]
+        customRenewalDays:
+          type: integer
+          minimum: 1
+          maximum: 36500
+        remindDays:
+          type: integer
+          minimum: 1
+          maximum: 14
+        cost:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 20000
+
+    UpdateSubscriptionRequest:
+      type: object
+      description: Partial update. An absent property is unchanged (null is treated as absent). An empty string clears `cost` and `description`. The `lifetime` pattern clears the expiry date; `customRenewalDays` exists only for the `custom` pattern.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expiryDate:
+          type: string
+          format: date
+        renewalPattern:
+          type: string
+          enum: [monthly, yearly, lifetime, custom, none]
+        customRenewalDays:
+          type: integer
+          minimum: 1
+          maximum: 36500
+        remindDays:
+          type: integer
+          minimum: 1
+          maximum: 14
+        cost:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 20000
+        version:
+          type: integer
+          format: int64
+          description: Client's base version (informational); ignored.
+
+    # ===== LICENSES =====
+    License:
+      type: object
+      required: [id, userId, name, expiryDate, renewalPattern, remindDays, createdAt, updatedAt, version]
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 200
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+          description: YYYY-MM-DD. Null only for renewalPattern lifetime (never expires)
+        renewalPattern:
+          type: string
+          enum: [monthly, yearly, lifetime, custom, none]
+        customRenewalDays:
+          type: integer
+          minimum: 1
+          maximum: 36500
+          description: Required (positive) for the custom renewal pattern
+        remindDays:
+          type: integer
+          minimum: 1
+          maximum: 14
+          description: Days before expiry to notify
+        cost:
+          type: string
+          description: e.g., "$99/year"
+        description:
+          type: string
+          maxLength: 20000
+        licenseKey:
+          type: string
+          maxLength: 10000
+          description: Returned to the owner only (get, list, export); the client shows it masked until revealed. Never logged.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        version:
+          type: integer
+          format: int64
+
+    CreateLicenseRequest:
+      type: object
+      description: |
+        A license as composed by the client.
+        `expiryDate` may be omitted or null only for `lifetime`; `custom` needs a positive `customRenewalDays`.
+      required: [id, name, renewalPattern, remindDays]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Client-generated record id
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+        renewalPattern:
+          type: string
+          enum: [monthly, yearly, lifetime, custom, none]
+        customRenewalDays:
+          type: integer
+          minimum: 1
+          maximum: 36500
+        remindDays:
+          type: integer
+          minimum: 1
+          maximum: 14
+        cost:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 20000
+        licenseKey:
+          type: string
+          maxLength: 10000
+          description: Multi-line capable; never logged
+
+    UpdateLicenseRequest:
+      type: object
+      description: Partial update. An absent property is unchanged (null is treated as absent). An empty string clears `cost`, `description` and `licenseKey`. The `lifetime` pattern clears the expiry date; `customRenewalDays` exists only for the `custom` pattern.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        expiryDate:
+          type: string
+          format: date
+        renewalPattern:
+          type: string
+          enum: [monthly, yearly, lifetime, custom, none]
+        customRenewalDays:
+          type: integer
+          minimum: 1
+          maximum: 36500
+        remindDays:
+          type: integer
+          minimum: 1
+          maximum: 14
+        cost:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 20000
+        licenseKey:
+          type: string
+          maxLength: 10000
+          description: Replaces the key; an empty string removes it
+        version:
+          type: integer
+          format: int64
+          description: Client's base version (informational); ignored.
+
+    RenewRequest:
+      type: object
+      required: [expectedExpiryDate]
+      properties:
+        expectedExpiryDate:
+          type: string
+          format: date
+          description: The expiry date the client saw; a different current date makes the call a no-op
+
+    # ===== SETTINGS =====
+
     UserSettings:
       type: object
       required: [userId, timeZone, locale, createdAt, updatedAt]
@@ -1060,7 +1660,7 @@ components:
 
     AccountExport:
       type: object
-      required: [exportedAt, user, settings, dataSources, books, movies]
+      required: [exportedAt, user, settings, dataSources, books, movies, subscriptions, licenses]
       properties:
         exportedAt:
           type: string
@@ -1082,6 +1682,15 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Movie'
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+        licenses:
+          type: array
+          description: Includes each license key in plaintext
+          items:
+            $ref: '#/components/schemas/License'
 
     DataSources:
       type: object

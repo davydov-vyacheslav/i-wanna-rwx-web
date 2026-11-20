@@ -1,32 +1,21 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ApiClient } from '../../api/client'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
+import { Segments } from '../../components/Segments'
 import { Toast } from '../../components/Toast'
 import { t, type Locale, type MessageKey } from '../../i18n'
 import { format } from '../../i18n/format'
-import { buildView, type CountLabel } from './counts'
+import { buildView, countText } from './counts'
 import { errorMessage } from './errorMessage'
 import { FilterSheet } from './FilterSheet'
-import { selectType, showTypeButtons } from './filters'
+import { selectType, showTypeButtons, type TypeFilter } from './filters'
 import { FilterIcon, MoreIcon, PlusIcon, SearchIcon, SortIcon } from './icons'
 import { useListState, type ListName } from './listState'
 import type { ItemActions } from './MediaCard'
 import { LEAVE_MS, prefersReducedMotion } from './motion'
 import { sortItems } from './sort'
 import { SortSheet } from './SortSheet'
-import { TypeSegments } from './TypeSegments'
 import type { ListItem, MediaKind } from './types'
-
-function countText(count: CountLabel, locale: Locale): string {
-  switch (count.kind) {
-    case 'none':
-      return ''
-    case 'total':
-      return format(t(locale, 'media.count.total'), { total: count.total })
-    case 'narrowed':
-      return format(t(locale, 'media.count.narrowed'), { shown: count.shown, total: count.total })
-  }
-}
 
 /** What the data hooks of one list expose to the shell. */
 export interface ListData<T> {
@@ -51,6 +40,13 @@ interface AddContext {
   /** Closes the sheet and opens the existing item (409 `existingId`). */
   onDuplicate: (existingId: string) => void
 }
+
+/** All / Movies / Series under the search row: a shortcut for the type filter (the sheet has no type row). */
+const TYPE_OPTIONS: { key: TypeFilter; label: MessageKey }[] = [
+  { key: 'all', label: 'media.type.all' },
+  { key: 'movie', label: 'media.movies.title' },
+  { key: 'tv', label: 'media.type.tv.plural' },
+]
 
 const squareButton = 'relative flex size-11 shrink-0 items-center justify-center rounded-md'
 
@@ -272,10 +268,13 @@ export function ListScreen<T extends ListItem & { version: number }>({
             )}
           </div>
           {segments && (
-            <TypeSegments
-              locale={locale}
+            <Segments
+              className="mt-2"
+              label={t(locale, 'media.type.label')}
+              options={TYPE_OPTIONS.map((o) => ({ key: o.key, label: t(locale, o.label) }))}
               value={filters.type}
               onSelect={(v) =>
+                // a second tap on the selected type goes back to All
                 list.setFilters(v === 'all' ? { ...filters, type: 'all', ended: 'all' } : selectType(filters, v))
               }
             />

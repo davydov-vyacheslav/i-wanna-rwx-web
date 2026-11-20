@@ -16,6 +16,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import java.time.temporal.Temporal;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.Mapper;
 import org.springframework.data.jpa.repository.Query;
@@ -63,7 +64,8 @@ class ArchitectureTests {
     void everyModuleRootClassIsUsedByAnotherModule() {
         // the module root is the published API; a class nobody outside the module uses belongs in a sub-package
         freeze(classes().that().resideInAnyPackage(
-                        BASE + ".datasource", BASE + ".settings", BASE + ".identity", BASE + ".media")
+                        BASE + ".datasource", BASE + ".settings", BASE + ".identity", BASE + ".media",
+                        BASE + ".reminders")
                 .and().areTopLevelClasses()
                 .and().haveSimpleNameNotEndingWith("package-info")
                 .should(beUsedOutsideItsModule())).check(classes);
@@ -73,7 +75,17 @@ class ArchitectureTests {
     void sharedCodeDoesNotDependOnFeatureModules() {
         noClasses().that().resideInAPackage(BASE + ".common..")
                 .should().dependOnClassesThat().resideInAnyPackage(
-                        BASE + ".datasource..", BASE + ".settings..", BASE + ".identity..", BASE + ".media..")
+                        BASE + ".datasource..", BASE + ".settings..", BASE + ".identity..", BASE + ".media..",
+                        BASE + ".reminders..")
+                .check(classes);
+    }
+
+    @Test
+    void timeComesFromAClock() {
+        // reminders fire at 09:00 in the user's zone; now() without a Clock cannot be tested or pinned to that zone
+        noClasses().should().callMethodWhere(DescribedPredicate.describe("is a parameterless now()", call ->
+                call.getName().equals("now") && call.getTarget().getRawParameterTypes().isEmpty()
+                        && call.getTargetOwner().isAssignableTo(Temporal.class)))
                 .check(classes);
     }
 

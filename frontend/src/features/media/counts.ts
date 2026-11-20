@@ -1,3 +1,5 @@
+import { t, type Locale } from '../../i18n'
+import { format } from '../../i18n/format'
 import { applyFilters, type Filters } from './filters'
 import { applySearch } from './search'
 import { sortItems, type SortOption } from './sort'
@@ -10,6 +12,17 @@ export type CountLabel =
 export function countLabel(shown: number, total: number): CountLabel {
   if (total === 0) return { kind: 'none' }
   return shown < total ? { kind: 'narrowed', shown, total } : { kind: 'total', total }
+}
+
+export function countText(count: CountLabel, locale: Locale): string {
+  switch (count.kind) {
+    case 'none':
+      return ''
+    case 'total':
+      return format(t(locale, 'media.count.total'), { total: count.total })
+    case 'narrowed':
+      return format(t(locale, 'media.count.narrowed'), { shown: count.shown, total: count.total })
+  }
 }
 
 export interface ListState {

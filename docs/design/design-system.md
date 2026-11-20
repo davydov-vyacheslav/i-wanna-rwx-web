@@ -1,6 +1,6 @@
 # RWX design system
 
-Scope: Books, Movies/TV, Add sheet, Filter/Sort sheets, Item detail, Settings. Reminders, sign-in and the install walkthrough page are not designed yet (the install steps exist as a short inline list in Settings).
+Scope: Books, Movies/TV, Add sheet, Filter/Sort sheets, Item detail, Settings, Reminders (see `reminders.md`). Sign-in and the install walkthrough page are not designed yet (the install steps exist as a short inline list in Settings).
 
 Principles: minimal; two taps to any list (tab bar: Books, Movies, Reminders, Settings); no categories, tags, ads or recommendations; fast capture (the "+" is a thumb-reach button on every list, the add sheet opens with the keyboard up); drafts always possible, even offline or without a search provider.
 
@@ -70,9 +70,9 @@ System font (SF on iOS). Dynamic Type is not available in PWAs, so sizes are fix
 - Card focus (owner decision): the card's open area (the big title/meta button) shows NO focus indicator at all, for pointer and keyboard users; it stays focusable. The other buttons (cover link, heart, eye, Delete) keep the global `:focus-visible` ring.
 - Sheets below `md`: grabber, rounded 24 top corners, scrim tap closes, header has a text button (Close/Done) because swipe-down dismissal is not reliable in a PWA. Add sheet is full height; others are content height. Hash/route-backed so the Back gesture closes it.
 - Dialogs from `md` up: the same Sheet component renders as a centered modal, `max-w-lg` (32rem), at most 85dvh with its own scroll and the footer pinned, all corners 24, 0.5px hairline, `0 12px 40px #0004` shadow, scrim, 160ms fade + scale from .96 (none under reduced motion), no grabber; the visual-viewport variables do not apply. The Add sheet is 85dvh high. ConfirmDialog is already a centered dialog (`max-w-sm`) and fades in the same way. Focus trap, Escape, scrim tap, inert stacking (preview over add) and focus return are unchanged.
-- Sidebar from `md` up replaces the tab bar (which is hidden): fixed 14rem column on the left, same three entries with the same icons and labels, icon beside label, 44px rows, current entry accent text on `accent-soft` with `aria-current="page"`.
-- Bottom tab bar (below `md`): 4 tabs, icon + label, current tab in accent. Tapping the current tab scrolls to top (frontend behaviour). Reminders tab is shown disabled in prototypes only.
-- Tap targets that change data give immediate optimistic feedback; delete asks for confirmation in a dialog and waits for the server (no Undo before Phase 5).
+- Sidebar from `md` up replaces the tab bar (which is hidden): fixed 14rem column on the left, same four entries with the same icons and labels, icon beside label, 44px rows, current entry accent text on `accent-soft` with `aria-current="page"`.
+- Bottom tab bar (below `md`): 4 tabs, icon + label, current tab in accent. Tapping the current tab scrolls to top (frontend behaviour). The Reminders tab holds a Subscriptions / Licenses segmented control (`reminders.md`); the bar and sidebar stay at four entries. The prototypes show the tab disabled.
+- Tap targets that change data give immediate optimistic feedback (exception: Renewed on Reminders waits for the server, the date is computed there); delete asks for confirmation in a dialog and waits for the server (no Undo before Phase 5).
 
 ## 3. Components
 
@@ -87,6 +87,8 @@ System font (SF on iOS). Dynamic Type is not available in PWAs, so sizes are fix
 **Status badge**: 22px high pill, icon 12px + text 12px/500, colours from the planned/seen/danger/warn pairs.
 
 **Tri-state filter row** (whole 52px row is the target): 28px box + label + word. States cycle Any -> Only -> Hide -> Any. Any = empty outline; Only = accent fill + check; Hide = danger fill + minus. `role=checkbox`, `aria-checked` false/true/mixed. "Ended" appears only when type = Series and resets to Any otherwise. Sheet header: Reset (left, returns to default = seen hidden), Done (right); primary footer button `Show 6 of 8` shows the live result count.
+
+**Segmented control** (shared component, extracted from the Movies type segments): `role=group` of 2-3 buttons with `aria-pressed`, `surface-2` track, selected segment `segment-on` token (light `#ffffff` = surface, dark `#636366`, lighter than the track so it reads) + shadow-sm, 44px high. Used by Movies (All / Movies / Series, tap on the selected one returns to All) and Reminders (Subscriptions / Licenses, always one selected). Reminders' list, card, urgency badges (expired, critical, soon, lifetime; made of the existing danger/warn/surface-2 pairs, so no new colour tokens), add/edit and detail sheets are in `reminders.md`.
 
 **More menu** (Movies only): a button after Sort opens a bottom sheet with the list's extra actions; one action today (Refresh series status). Failures show inline in that sheet.
 

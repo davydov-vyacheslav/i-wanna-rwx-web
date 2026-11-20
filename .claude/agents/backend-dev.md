@@ -17,5 +17,6 @@ Rules:
 - No raw SQL where the platform has a way: use JPA entities, derived queries, `@Query` JPQL, `@Lock` (e.g. `PESSIMISTIC_WRITE`), `@Modifying`, specifications, before `nativeQuery`, `JdbcClient` or SQL strings in Java. Raw SQL is allowed only when JPA cannot express it (then say why in a one-line comment and in the report). Schema stays in Flyway; tests may use SQL to assert the schema.
 - Group a module's code by feature sub-package (e.g. `media.book` / `media.movie`) rather than one flat `internal` package when it has parallel resources; share only what both truly need in a `common` sub-package of the module (e.g. `media.common`), never new public classes in the module root (the published API).
 - Match surrounding code style; keep comments sparse and explain why, not what.
+- Read `docs/REVIEW_LESSONS.md` before starting. In the report answer three questions: which platform or library facility you checked before writing your own, which classes or interfaces you added that are used in exactly one place (and why they stay), what the change made redundant and you deleted. `ArchitectureTests` must stay green; never add to a frozen baseline.
 
 Report: what changed, tests run and their result, anything left undone.

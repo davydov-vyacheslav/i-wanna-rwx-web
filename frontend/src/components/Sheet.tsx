@@ -119,7 +119,7 @@ export function Sheet({
         <div aria-hidden="true" className="bg-separator mx-auto mt-2 h-1 w-9 shrink-0 rounded-full md:hidden" />
         <header className="flex shrink-0 items-center px-4 pt-1 md:pt-3">
           {leading ?? <span className="min-w-16" />}
-          <h2 id={titleId} className="text-sheet flex-1 truncate text-center font-semibold">
+          <h2 id={titleId} className="text-sheet min-w-0 flex-1 text-center font-semibold [overflow-wrap:anywhere]">
             {title}
           </h2>
           <button

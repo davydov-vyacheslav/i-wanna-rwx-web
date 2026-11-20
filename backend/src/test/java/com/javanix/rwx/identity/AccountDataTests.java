@@ -88,6 +88,8 @@ class AccountDataTests {
                 .containsExactly("book/open_library", "movie/tmdb");
         assertThat(export.<List<?>>json("$.books")).isEmpty();
         assertThat(export.<List<?>>json("$.movies")).isEmpty();
+        assertThat(export.<List<?>>json("$.subscriptions")).isEmpty();
+        assertThat(export.<List<?>>json("$.licenses")).isEmpty();
         assertThat(export.body()).doesNotContain(f.b().id().toString(), f.a().sessionId())
                 .doesNotContainIgnoringCase("session");
         assertThat(api.as(f.b()).get("/api/v1/me/export").<String>json("$.user.id")).isEqualTo(f.b().id().toString());
