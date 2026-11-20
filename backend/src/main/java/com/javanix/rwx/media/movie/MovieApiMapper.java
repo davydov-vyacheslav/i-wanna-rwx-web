@@ -1,14 +1,12 @@
 package com.javanix.rwx.media.movie;
 
 import com.javanix.rwx.api.model.Movie;
+import com.javanix.rwx.common.ApiMapping;
 import java.net.URI;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = ApiMapping.class)
 interface MovieApiMapper {
 
     @Mapping(target = "isFavorite", source = "favorite")
@@ -29,9 +27,5 @@ interface MovieApiMapper {
 
     default URI uri(String value) {
         return value == null ? null : URI.create(value);
-    }
-
-    default OffsetDateTime utc(Instant instant) {
-        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
     }
 }

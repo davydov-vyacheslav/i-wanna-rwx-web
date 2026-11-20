@@ -15,6 +15,11 @@ body,
 
 /* in a layer so utilities such as focus-visible:outline-none can override it */
 @layer base {
+  /* a field with a validation error; declared before :focus-visible so the focus ring wins while editing */
+  [aria-invalid='true'] {
+    outline: 2px solid var(--danger);
+    outline-offset: 2px;
+  }
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;

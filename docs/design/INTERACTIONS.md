@@ -28,7 +28,7 @@ User flows and edge cases. Visual tokens, components and the state table are in 
 
 **Filter and sort**: the filter sheet is tri-state (Any, Only, Hide) and applies live; the footer shows the result count. Reset returns to the default (seen hidden). Filter and sort are device-local, not synced.
 
-**Renew a reminder** (Reminders tab, two taps): open the reminder, tap Renew. Enabled only for renewable types; the expiry advances by one period, the notification is rescheduled, the card updates at once and a toast confirms. The same button is the only path from a push notification, because iOS Web Push has no action buttons: tapping the notification opens the reminder, the user taps Renew.
+**Renew a reminder** (Reminders tab, two taps): open the reminder, tap Renew. Enabled only for renewable types; the expiry advances by one period and a toast confirms. In Phase 4 the app waits for the server (no optimistic update, nothing is rescheduled; notifications arrive in Phase 6), see `reminders.md`. The same button is the only path from a push notification, because iOS Web Push has no action buttons: tapping the notification opens the reminder, the user taps Renew.
 
 ## Offline and sync
 

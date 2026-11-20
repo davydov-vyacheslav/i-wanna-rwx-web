@@ -1,4 +1,4 @@
 #
-#Thu Nov 19 21:05:42 EET 2026
+#Fri Nov 20 13:55:17 EET 2026
 classes\ that\ are\ interfaces\ and\ are\ not\ annotations\ and\ reside\ outside\ of\ package\ 'com.javanix.rwx.api..'\ and\ are\ not\ assignable\ to\ org.springframework.data.repository.Repository\ and\ are\ not\ annotated\ with\ @Mapper\ should\ not\ have\ exactly\ one\ implementation=ef5d3474-0ef5-4ba4-83ab-b24b130930a5
-classes\ that\ reside\ in\ any\ package\ ['com.javanix.rwx.datasource',\ 'com.javanix.rwx.settings',\ 'com.javanix.rwx.identity',\ 'com.javanix.rwx.media']\ and\ are\ top\ level\ classes\ and\ have\ simple\ name\ not\ ending\ with\ 'package-info'\ should\ be\ used\ outside\ its\ module=ada546e7-def3-420f-8b1f-2c1323fb9317
+classes\ that\ reside\ in\ any\ package\ ['com.javanix.rwx.datasource',\ 'com.javanix.rwx.settings',\ 'com.javanix.rwx.identity',\ 'com.javanix.rwx.media',\ 'com.javanix.rwx.reminders']\ and\ are\ top\ level\ classes\ and\ have\ simple\ name\ not\ ending\ with\ 'package-info'\ should\ be\ used\ outside\ its\ module=14df4f2c-8486-4b7d-b996-12d48afd7ae1

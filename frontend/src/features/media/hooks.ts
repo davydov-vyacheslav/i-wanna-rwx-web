@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query'
 import type { ApiClient } from '../../api/client'
 import { isMediaError } from './errors'
 import { createMediaRepository } from './repository'
@@ -7,7 +7,7 @@ import { createMediaRepository } from './repository'
 export const BOOKS_KEY = ['media', 'books'] as const
 export const MOVIES_KEY = ['media', 'movies'] as const
 
-type Key = typeof BOOKS_KEY | typeof MOVIES_KEY
+type Key = QueryKey
 type Row = { id: string; version: number; updatedAt: string }
 
 const refetching = {
@@ -17,14 +17,14 @@ const refetching = {
 } as const
 
 // networkMode 'always': offline must fail fast to a toast, not pause the mutation (nothing is queued in this phase)
-const mutationMode = { networkMode: 'always' } as const
+export const mutationMode = { networkMode: 'always' } as const
 
 function useRepo(api?: ApiClient) {
   return useMemo(() => createMediaRepository(api), [api])
 }
 
 /** Adds the stored row, or replaces the cached one when the response is not older. */
-function upsert<T extends Row>(qc: QueryClient, key: Key, item: T) {
+export function upsert<T extends Row>(qc: QueryClient, key: Key, item: T) {
   qc.setQueryData<T[]>(key, (old) => {
     if (!old) return old
     const cur = old.find((x) => x.id === item.id)
@@ -38,7 +38,7 @@ function remove(qc: QueryClient, key: Key, id: string) {
 }
 
 /** A 404/410 means the cached row is stale: let the server list replace it. */
-function refetchIfStale(qc: QueryClient, key: Key, error: unknown) {
+export function refetchIfStale(qc: QueryClient, key: Key, error: unknown) {
   if (isMediaError(error) && (error.kind === 'gone' || error.kind === 'not_found')) {
     void qc.invalidateQueries({ queryKey: key })
   }
@@ -62,11 +62,11 @@ function rollbackPatch<T extends Row>(qc: QueryClient, key: Key, previous: T | u
   refetchIfStale(qc, key, error)
 }
 
-function useList<T>(key: Key, list: () => Promise<T[]>) {
+export function useList<T>(key: Key, list: () => Promise<T[]>) {
   return useQuery({ queryKey: key, queryFn: list, ...refetching })
 }
 
-function useCreate<T extends Row, R>(key: Key, create: (item: R) => Promise<T>) {
+export function useCreate<T extends Row, R>(key: Key, create: (item: R) => Promise<T>) {
   const qc = useQueryClient()
   return useMutation({
     ...mutationMode,
@@ -86,7 +86,7 @@ function useUpdate<T extends Row, P extends object>(key: Key, update: (id: strin
   })
 }
 
-function useDelete(key: Key, del: (id: string) => Promise<void>) {
+export function useDelete(key: Key, del: (id: string) => Promise<void>) {
   const qc = useQueryClient()
   return useMutation({
     ...mutationMode,

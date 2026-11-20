@@ -116,6 +116,65 @@ CREATE INDEX idx_movies_updated_at ON movies(user_id, updated_at DESC);
 CREATE INDEX idx_movies_deleted_at ON movies(deleted_at) WHERE deleted_at IS NOT NULL;
 
 -- ============================================================================
+-- subscriptions: Recurring subscriptions (renewal reminders)
+-- ============================================================================
+CREATE TABLE subscriptions (
+  id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  expiry_date date,
+  renewal_pattern text NOT NULL,
+  custom_renewal_days integer,
+  remind_days integer NOT NULL,
+  cost text,
+  description text,
+  version bigint NOT NULL DEFAULT 1,
+  deleted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id),
+  CONSTRAINT valid_pattern CHECK (renewal_pattern IN ('monthly', 'yearly', 'lifetime', 'custom', 'none')),
+  CONSTRAINT valid_remind_days CHECK (remind_days >= 1 AND remind_days <= 14),
+  CONSTRAINT expiry_required CHECK (renewal_pattern = 'lifetime' OR expiry_date IS NOT NULL),
+  CONSTRAINT custom_days_required CHECK (renewal_pattern <> 'custom' OR COALESCE(custom_renewal_days, 0) > 0),
+  CONSTRAINT valid_custom_renewal_days CHECK (custom_renewal_days <= 36500),
+  CONSTRAINT valid_expiry_year CHECK (expiry_date <= DATE '2999-12-31')
+);
+
+CREATE INDEX idx_subscriptions_user_expiry_date ON subscriptions(user_id, expiry_date);
+CREATE INDEX idx_subscriptions_deleted_at ON subscriptions(deleted_at) WHERE deleted_at IS NOT NULL;
+
+-- ============================================================================
+-- licenses: Licenses (renewal reminders, optional license key)
+-- ============================================================================
+CREATE TABLE licenses (
+  id uuid NOT NULL,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  expiry_date date,
+  renewal_pattern text NOT NULL,
+  custom_renewal_days integer,
+  remind_days integer NOT NULL,
+  cost text,
+  description text,
+  license_key text,
+  version bigint NOT NULL DEFAULT 1,
+  deleted_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, id),
+  CONSTRAINT valid_pattern CHECK (renewal_pattern IN ('monthly', 'yearly', 'lifetime', 'custom', 'none')),
+  CONSTRAINT valid_remind_days CHECK (remind_days >= 1 AND remind_days <= 14),
+  CONSTRAINT expiry_required CHECK (renewal_pattern = 'lifetime' OR expiry_date IS NOT NULL),
+  CONSTRAINT custom_days_required CHECK (renewal_pattern <> 'custom' OR COALESCE(custom_renewal_days, 0) > 0),
+  CONSTRAINT valid_custom_renewal_days CHECK (custom_renewal_days <= 36500),
+  CONSTRAINT valid_expiry_year CHECK (expiry_date <= DATE '2999-12-31')
+);
+
+CREATE INDEX idx_licenses_user_expiry_date ON licenses(user_id, expiry_date);
+CREATE INDEX idx_licenses_deleted_at ON licenses(deleted_at) WHERE deleted_at IS NOT NULL;
+
+-- ============================================================================
 -- user_settings: User preferences (locale, timezone)
 -- ============================================================================
 CREATE TABLE user_settings (
@@ -219,3 +278,22 @@ COMMENT ON COLUMN movies.external_id IS 'Provider id (TMDb id, digits) or, for a
 COMMENT ON COLUMN movies.external_link IS 'Canonical URL built by the server: the TMDb movie or tv page, or for a draft the Google search link of its title. Only where a tap goes and what the client compares by string; not an identity. Never NULL, at most 4096 characters. Immutable.';
 COMMENT ON COLUMN movies.version IS 'Server-incremented bigint, 1 on creation, +1 per accepted change. Last write wins; informational for clients.';
 COMMENT ON COLUMN movies.deleted_at IS 'Tombstone (description is nulled on delete). Hidden from reads, purged after 90 days. A tombstoned id is never recreated.';
+
+COMMENT ON TABLE subscriptions IS 'Subscriptions to renew or watch for expiry. Renewal pattern: monthly, yearly, lifetime, custom or none.';
+COMMENT ON COLUMN subscriptions.id IS 'Client-generated UUID, unique per user only: the key is (user_id, id), so ids of different users cannot collide.';
+COMMENT ON COLUMN subscriptions.expiry_date IS 'Calendar date (DATE type, timezone-agnostic), YYYY-MM-DD, at most 2999-12-31 (valid_expiry_year; a later year would not serialize for the client). NULL only for renewal_pattern lifetime (CHECK expiry_required). A past date is valid.';
+COMMENT ON COLUMN subscriptions.renewal_pattern IS 'How the record renews: monthly, yearly, lifetime (never expires), custom (custom_renewal_days), none (one-off, cannot be renewed).';
+COMMENT ON COLUMN subscriptions.custom_renewal_days IS 'For renewal_pattern=custom: days added to expiry_date on renewal. Positive for custom (custom_days_required), at most 36500 (valid_custom_renewal_days).';
+COMMENT ON COLUMN subscriptions.remind_days IS 'Days before expiry to remind. Range 1-14, required for every pattern. Used by notifications once they exist.';
+COMMENT ON COLUMN subscriptions.version IS 'Server-incremented bigint, 1 on creation, +1 per accepted change. Last write wins; informational for clients.';
+COMMENT ON COLUMN subscriptions.deleted_at IS 'Tombstone (description is nulled on delete). Hidden from reads, purged after 90 days. A tombstoned id is never recreated.';
+
+COMMENT ON TABLE licenses IS 'Licenses to renew or watch for expiry. The license key is stored as plain text for now (owner decision: encryption comes with the Security phase), so DB dumps and backups contain it in clear; returned to its owner, never logged.';
+COMMENT ON COLUMN licenses.id IS 'Client-generated UUID, unique per user only: the key is (user_id, id), so ids of different users cannot collide.';
+COMMENT ON COLUMN licenses.expiry_date IS 'Calendar date (DATE type, timezone-agnostic), YYYY-MM-DD, at most 2999-12-31 (valid_expiry_year; a later year would not serialize for the client). NULL only for renewal_pattern lifetime (CHECK expiry_required). A past date is valid.';
+COMMENT ON COLUMN licenses.renewal_pattern IS 'How the record renews: monthly, yearly, lifetime (never expires), custom (custom_renewal_days), none (one-off, cannot be renewed).';
+COMMENT ON COLUMN licenses.custom_renewal_days IS 'For renewal_pattern=custom: days added to expiry_date on renewal. Positive for custom (custom_days_required), at most 36500 (valid_custom_renewal_days).';
+COMMENT ON COLUMN licenses.remind_days IS 'Days before expiry to remind. Range 1-14, required for every pattern. Used by notifications once they exist.';
+COMMENT ON COLUMN licenses.license_key IS 'Plain text, multi-line capable. Returned to the owner (get, list, export), never logged, nulled on delete.';
+COMMENT ON COLUMN licenses.version IS 'Server-incremented bigint, 1 on creation, +1 per accepted change. Last write wins; informational for clients.';
+COMMENT ON COLUMN licenses.deleted_at IS 'Tombstone (description and license_key are nulled on delete). Hidden from reads, purged after 90 days. A tombstoned id is never recreated.';

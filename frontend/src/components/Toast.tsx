@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 
-/** Transient error message above the tab bar and safe area; tap to dismiss, auto-hides. */
+/** Transient message (error by default, `info` for a confirmation) above the tab bar and safe area; tap to dismiss, auto-hides. */
 export function Toast({
   message,
   dismissLabel,
   onDismiss,
   durationMs = 5000,
   action,
+  tone = 'error',
 }: {
   message: string
   dismissLabel: string
@@ -14,6 +15,7 @@ export function Toast({
   durationMs?: number
   /** Optional text button next to the message (Retry, Open Settings). */
   action?: { label: string; onClick: () => void }
+  tone?: 'error' | 'info'
 }) {
   const dismiss = useRef(onDismiss)
   useEffect(() => {
@@ -26,8 +28,8 @@ export function Toast({
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-50 md:bottom-6 md:left-[var(--sidebar-w)] flex justify-center px-4">
       <div
-        role="alert"
-        className="bg-danger-bg text-danger text-body pointer-events-auto flex min-h-11 max-w-md items-center gap-3 rounded-md py-1 pr-1 pl-4 font-medium"
+        role={tone === 'error' ? 'alert' : 'status'}
+        className={`${tone === 'error' ? 'bg-danger-bg text-danger' : 'bg-surface-2 text-ink'} text-body pointer-events-auto flex min-h-11 max-w-md items-center gap-3 rounded-md py-1 pr-1 pl-4 font-medium`}
       >
         <span className="flex-1">{message}</span>
         {action && (

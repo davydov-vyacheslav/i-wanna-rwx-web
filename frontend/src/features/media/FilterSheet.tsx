@@ -12,7 +12,7 @@ const WORD: Record<TriState, MessageKey> = {
 const CHECKED = { all: false, include: true, exclude: 'mixed' } as const
 
 /** Whole 52px row is the target. Shape (empty / check / minus) plus a word, never colour alone. */
-function TriRow({
+export function TriRow({
   label,
   state,
   onToggle,
