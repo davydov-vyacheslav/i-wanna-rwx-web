@@ -22,7 +22,11 @@ export function UrgencyBadge({ urgency, locale }: { urgency: Urgency; locale: Lo
   if (urgency.kind === 'ok') return null
   const { text, icon, tone } =
     urgency.kind === 'expired'
-      ? { text: t(locale, 'reminders.badge.expired'), icon: <XCircleIcon />, tone: 'bg-danger text-on-accent' }
+      ? {
+          text: t(locale, 'reminders.badge.expired'),
+          icon: <XCircleIcon />,
+          tone: 'bg-danger-bg text-danger ring-1 ring-danger ring-inset',
+        }
       : urgency.kind === 'lifetime'
         ? { text: t(locale, 'reminders.badge.forever'), icon: <InfinityIcon />, tone: 'bg-surface-2 text-ink-2' }
         : urgency.kind === 'critical'
@@ -34,7 +38,7 @@ export function UrgencyBadge({ urgency, locale }: { urgency: Urgency; locale: Lo
           : { text: daysText(locale, urgency.days), icon: <ClockIcon />, tone: 'bg-warn-bg text-warn' }
   return (
     <span
-      className={`inline-flex min-h-4 items-center gap-0.5 rounded-full px-1.5 text-[10px] leading-3 font-medium [&_svg]:size-2.5 ${tone}`}
+      className={`inline-flex min-h-4 shrink-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 text-[10px] leading-3 font-medium [&_svg]:size-2.5 ${tone}`}
     >
       {icon}
       {text}

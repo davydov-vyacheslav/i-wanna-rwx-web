@@ -79,8 +79,9 @@ describe('Reminders tab in the shell', () => {
     fireEvent.click(bar().getByRole('button', { name: 'Reminders' }))
     await screen.findByRole('heading', { name: 'Reminders', level: 1 })
     expect(window.location.hash).toBe('#/reminders/subscriptions')
-    for (const nav of [sidebar(), bar()])
-      expect(nav.getByRole('button', { name: 'Reminders' }).getAttribute('aria-current')).toBe('page')
+    expect(bar().getByRole('button', { name: 'Reminders' }).getAttribute('aria-current')).toBe('page')
+    // in the sidebar the Subscriptions sub-item is the announced current page
+    expect(sidebar().getByRole('button', { name: 'Subscriptions' }).getAttribute('aria-current')).toBe('true')
     expect(localStorage.getItem('rwx.tab.u1')).toBe('reminders')
   })
 
@@ -204,12 +205,16 @@ describe('Reminders list', () => {
     try {
       open()
       mount({ subscriptions: [item('Netflix', '2026-04-15')] })
-      expect(await screen.findByRole('table')).toBeTruthy()
+      await screen.findByText('Netflix')
+      expect(screen.getByRole('table')).toBeTruthy()
       // the sidebar names the sections, so the page title is the section, and the table sorts instead of filtering
       expect(screen.getByRole('heading', { level: 1, name: 'Subscriptions' })).toBeTruthy()
       expect(screen.queryByRole('button', { name: 'Filters' })).toBeNull()
       expect(screen.queryByText('1')).toBeNull()
       expect(screen.queryByText('Apr 15, 2026 · Monthly')).toBeNull()
+      // the header Add button replaces the floating one
+      expect(screen.getAllByRole('button', { name: 'Add subscription' })).toHaveLength(1)
+      expect(screen.getByRole('button', { name: 'Add subscription' }).textContent).toBe('Add')
     } finally {
       vi.unstubAllGlobals()
     }

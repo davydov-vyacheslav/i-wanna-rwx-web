@@ -1,3 +1,4 @@
+import { useScrollLock } from './useScrollLock'
 import { currentOpener, focusQuietly, usingKeyboard } from './opener'
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 
@@ -16,6 +17,7 @@ export function Sheet({
   closeLabel,
   onClose,
   leading,
+  oneLine = false,
   fullHeight = false,
   inert = false,
   footer,
@@ -26,6 +28,8 @@ export function Sheet({
   onClose: () => void
   /** Optional left header control (e.g. Reset); replaces the empty spacer. */
   leading?: ReactNode
+  /** The title stays on one line (ellipsis, full text in the tooltip): for titles that are item names. */
+  oneLine?: boolean
   /** Add sheet: fixed full height instead of content height. */
   fullHeight?: boolean
   /** Another sheet is open above this one: nothing here can be focused or announced. */
@@ -62,6 +66,8 @@ export function Sheet({
       })
     }
   }, [])
+
+  useScrollLock()
 
   useEffect(() => {
     const vv = window.visualViewport
@@ -119,7 +125,11 @@ export function Sheet({
         <div aria-hidden="true" className="bg-separator mx-auto mt-2 h-1 w-9 shrink-0 rounded-full md:hidden" />
         <header className="flex shrink-0 items-center px-4 pt-1 md:pt-3">
           {leading ?? <span className="min-w-16" />}
-          <h2 id={titleId} className="text-sheet min-w-0 flex-1 text-center font-semibold [overflow-wrap:anywhere]">
+          <h2
+            id={titleId}
+            title={oneLine ? title : undefined}
+            className={`text-sheet min-w-0 flex-1 text-center font-semibold ${oneLine ? 'truncate' : '[overflow-wrap:anywhere]'}`}
+          >
             {title}
           </h2>
           <button

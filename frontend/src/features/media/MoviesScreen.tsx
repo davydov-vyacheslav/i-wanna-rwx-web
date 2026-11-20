@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import type { ApiClient } from '../../api/client'
-import type { Locale } from '../../i18n'
+import { t, type Locale } from '../../i18n'
 import { AddSheet } from './AddSheet'
 import { useCreateMovie, useDeleteMovie, useMovies, useUpdateMovie } from './hooks'
 import { FilmIcon } from './icons'
 import { ListScreen, type ListData, type ListTexts } from './ListScreen'
 import { TvRefreshSheet } from './TvRefreshSheet'
-import { MovieCard, MovieDetailSheet } from './MovieCard'
+import { MediaTable, type TableSpec } from './MediaTable'
+import { MOVIE_LABELS, MovieCard, MovieDetailSheet, TypeIcon } from './MovieCard'
+import { tvLine } from './tvMeta'
 import type { Movie } from './types'
 
 const TEXTS: ListTexts = {
@@ -16,6 +18,19 @@ const TEXTS: ListTexts = {
   emptyPrompt: 'media.movies.empty.prompt',
   emptyAdd: 'media.movies.empty.add',
   seenFilter: 'media.filter.seenMovie',
+}
+
+const TABLE: TableSpec<Movie> = {
+  kind: 'movie',
+  labels: MOVIE_LABELS,
+  cover: (m) => m.posterUrl,
+  typeIcon: (m, locale) => (
+    <>
+      <TypeIcon type={m.type} size={16} />
+      <span className="sr-only">{t(locale, m.type === 'tv' ? 'media.type.tv' : 'media.type.movie')}</span>
+    </>
+  ),
+  line: tvLine,
 }
 
 /** Movies and series list, self-contained like `BooksScreen`; the type filter is the segmented control. */
@@ -56,6 +71,9 @@ export function MoviesScreen({ locale, userId, api }: { locale: Locale; userId?:
         )}
         onMenu={() => setMenu(true)}
         emptyIcon={<FilmIcon size={48} />}
+        renderTable={(rows, actions, loading) => (
+          <MediaTable rows={rows} spec={TABLE} locale={locale} api={api} actions={actions} loading={loading} />
+        )}
         renderCard={(m, actions) => <MovieCard key={m.id} movie={m} locale={locale} actions={actions} />}
         renderDetail={(m, actions, onClose) => (
           <MovieDetailSheet movie={m} locale={locale} actions={actions} onClose={onClose} />

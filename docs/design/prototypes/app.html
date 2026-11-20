@@ -226,7 +226,7 @@ function card(i,kind){
   <div class="body" role="button" tabindex="0" data-act="detail" data-id="${i.id}">
     <h3>${typeIcon(i,kind)}<span>${esc(i.t)}</span></h3>
     <div class="meta"><span>${i.y||'—'}</span>${ic('star')}<b>${fmtR(i.r)}</b></div>
-    <div class="sub">${esc(i.a||t('noAuthor'))}</div>${extra}
+    ${kind==='books'?`<div class="sub">${esc(i.a||t('noAuthor'))}</div>`:''}${extra}
     <div class="badges"><span class="chip ${done?'seen':'planned'}">${ic(done?'check':'clock')}${t(done?'seen':'planned')}</span><span class="chip">${esc(i.src)}</span>${i.pend?'<span class="chip warn"><span class="dot"></span></span>':''}</div>
   </div>
   <div class="acts">
@@ -292,7 +292,7 @@ function detailSheet(){
   const done=i.st==='seen';
   return `<div class="sheet-h"><span style="min-width:64px"></span><h2></h2><button class="txt" data-act="close" style="text-align:right">${t('close')}</button></div>
   <div class="sheet-b"><div class="det">${coverHtml(i,'lg')}<div style="min-width:0"><h2>${esc(i.t)}</h2>
-  <div class="meta"><span>${i.y||'—'}</span>${ic('star')}<b>${fmtR(i.r)}</b></div><div class="sub" style="-webkit-line-clamp:3">${esc(i.a||t('noAuthor'))}</div>
+  <div class="meta"><span>${i.y||'—'}</span>${ic('star')}<b>${fmtR(i.r)}</b></div>${kind==='books'?`<div class="sub" style="-webkit-line-clamp:3">${esc(i.a||t('noAuthor'))}</div>`:''}
   ${i.tv?`<div class="sub">${t('statusLine',{s:t(i.tv.s==='ended'?'endedS':'ongoing'),n:i.tv.n})}</div>`:''}
   <div class="badges"><span class="chip ${done?'seen':'planned'}">${ic(done?'check':'clock')}${t(done?'seen':'planned')}</span><span class="chip">${esc(i.src)}</span></div></div></div>
   <div class="desc">${i.d?esc(i.d):`<span style="color:var(--text-2)">${t('noDesc')}</span>`}</div>

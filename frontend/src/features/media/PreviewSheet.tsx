@@ -3,7 +3,6 @@ import { Sheet } from '../../components/Sheet'
 import { Spinner } from '../../components/Spinner'
 import { t, type Locale } from '../../i18n'
 import { useBookDetails, useMovieDetails } from './hooks'
-import { BookIcon, FilmIcon, TvIcon } from './icons'
 import { CoverLink, YearRating } from './MediaCard'
 import { tvLine } from './tvMeta'
 import type { MediaKind } from './types'
@@ -76,15 +75,7 @@ export function PreviewSheet({
           <CoverLink
             title={d.title}
             src={b?.coverUrl ?? m?.posterUrl}
-            placeholder={
-              kind === 'book' ? (
-                <BookIcon size={32} />
-              ) : m?.type === 'tv' ? (
-                <TvIcon size={32} />
-              ) : (
-                <FilmIcon size={32} />
-              )
-            }
+            kind={kind}
             locale={locale}
             width={90}
             height={120}

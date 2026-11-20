@@ -149,10 +149,11 @@ describe('Sources section', () => {
     expect(screen.getByText('Books')).toBeTruthy()
     expect(screen.getByText('Movies and TV')).toBeTruthy()
     expect(screen.getByText('TMDb')).toBeTruthy()
-    expect(screen.getByText('Needs an API key')).toBeTruthy()
+    // the key row has a phone button (state + chevron) and a desktop one (Save key); the state text exists in both, one is hidden per width
+    expect(screen.getAllByText('Needs an API key')).toHaveLength(2)
     expect(screen.queryAllByRole('radio')).toHaveLength(0)
-    // every row has the same shape: only a source that needs a key has a key button
-    expect(screen.getAllByRole('button')).toHaveLength(1)
+    // only a source that needs a key has key buttons
+    expect(screen.getAllByRole('button')).toHaveLength(2)
     expect(screen.queryByLabelText(/API key for/)).toBeNull()
   })
 
@@ -182,10 +183,10 @@ describe('Sources section', () => {
     const s = mount(twoBooks(), () => json(after))
     const radios = await screen.findAllByRole('radio')
     expect(radios).toHaveLength(2)
-    expect(radios.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false'])
+    expect(radios.map((r) => (r as HTMLInputElement).checked)).toEqual([true, false])
     fireEvent.click(radios[1]!)
     await waitFor(() =>
-      expect(screen.getAllByRole('radio').map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true']),
+      expect(screen.getAllByRole('radio').map((r) => (r as HTMLInputElement).checked)).toEqual([false, true]),
     )
     const w = writes(s.calls)
     expect(w).toHaveLength(1)
@@ -212,8 +213,57 @@ describe('Sources section', () => {
     }
     mount(data)
     const radios = await screen.findAllByRole('radio')
-    expect(radios[1]!.getAttribute('aria-checked')).toBe('true')
-    expect(radios[1]!.textContent).toContain(en['sources.defaultNeedsKey'])
+    expect((radios[1] as HTMLInputElement).checked).toBe(true)
+    expect(radios[1]!.closest('label')!.textContent).toContain(en['sources.defaultNeedsKey'])
+  })
+
+  it('the radios are native inputs of one group per type, so the browser gives the arrow keys and one Tab stop', async () => {
+    mount(twoBooks())
+    const radios = (await screen.findAllByRole('radio')) as HTMLInputElement[]
+    expect(radios.every((r) => r.tagName === 'INPUT' && r.type === 'radio' && r.name === 'default-book')).toBe(true)
+    expect(screen.getByRole('radiogroup', { name: 'Default source for Books' })).toBeTruthy()
+  })
+
+  it('the desktop key button names the action and the source, and Replace once a key is saved', async () => {
+    mount(lists())
+    expect(await screen.findByRole('button', { name: 'Save key, TMDb' })).toBeTruthy()
+    cleanup()
+    mount(lists({ movies: [tmdb({ tokenSaved: true, available: true })] }))
+    expect(await screen.findByRole('button', { name: 'Replace key, TMDb' })).toBeTruthy()
+    cleanup()
+    mount(lists(), undefined, 'ru')
+    expect(await screen.findByRole('button', { name: 'Сохранить ключ, TMDb' })).toBeTruthy()
+  })
+
+  it('from md the row is one line: three grid columns, key button in the third', async () => {
+    mount(lists())
+    const button = await screen.findByRole('button', { name: 'Save key, TMDb' })
+    expect(button.className).toContain('md:col-start-3')
+    expect(button.parentElement!.className).toContain('md:grid-cols-[1fr_9rem_3.5rem]')
+  })
+
+  it('a source that needs no key has no key button', async () => {
+    mount(lists({ movies: [] }))
+    await screen.findByText('Open Library')
+    expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+
+  it('an unavailable source shows the alert glyph, an available one the check', async () => {
+    mount(lists({ movies: [tmdb(), tmdb({ id: 'open_library', label: 'OMDb', isDefault: false, available: true })] }))
+    await screen.findByText('OMDb')
+    const glyph = (label: string) =>
+      screen.getAllByText(label).map((e) => e.querySelector('svg path')?.getAttribute('d'))
+    expect(glyph('Needs an API key').every((d) => d === 'M12 7v6M12 16.5v.5')).toBe(true)
+    expect(glyph('Available').every((d) => d === 'M7.5 12.5l3 3 6-6.5')).toBe(true)
+  })
+
+  it('the desktop key button opens the dialog and gets focus back when it closes', async () => {
+    mount(lists())
+    const button = await screen.findByRole('button', { name: 'Save key, TMDb' })
+    button.focus()
+    fireEvent.click(button)
+    fireEvent.keyDown(await screen.findByLabelText('API key for TMDb'), { key: 'Escape' })
+    await waitFor(() => expect(document.activeElement).toBe(button))
   })
 
   const openKey = async (name: RegExp = /Needs an API key/) => {
@@ -374,6 +424,6 @@ describe('Sources section', () => {
 
   it('localized in ru and uk', async () => {
     mount(lists(), undefined, 'ru')
-    expect(await screen.findByText('Нужен ключ API')).toBeTruthy()
+    expect((await screen.findAllByText('Нужен ключ API')).length).toBeGreaterThan(0)
   })
 })

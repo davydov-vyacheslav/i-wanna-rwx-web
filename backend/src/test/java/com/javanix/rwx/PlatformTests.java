@@ -72,6 +72,31 @@ class PlatformTests {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"/sw.js", "/manifest.webmanifest", "/icon-512.png"})
+    void pwaFilesAreServedUnauthenticatedAndRevalidated(String path) {
+        var response = api.get(path).expect(200);
+        assertThat(response.header("Cache-Control")).isEqualTo("no-cache");
+        assertThat(response.body()).doesNotContain("rwx test");
+    }
+
+    @Test
+    void oauthPathsAreNotTheSpaFallback() {
+        // answered by Spring Security (redirect to GitHub), never index.html
+        assertThat(api.get("/oauth2/authorization/github").raw().getStatus()).isEqualTo(302);
+    }
+
+    @Test
+    void contentSecurityPolicyIsOnPagesApiAndNotFound() {
+        var user = api.as(users.create());
+        var expected = new String[] {"img-src 'self' data: https://covers.openlibrary.org https://archive.org "
+                + "https://*.archive.org https://image.tmdb.org https://avatars.githubusercontent.com",
+                "object-src 'none'", "base-uri 'self'", "frame-ancestors 'none'"};
+        for (var response : new Api.Res[] {api.get("/media/42"), user.get("/api/v1/me"), user.get("/api/v1/nope")}) {
+            assertThat(response.header("Content-Security-Policy")).contains(expected);
+        }
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"", "/liveness", "/readiness"})
     void healthProbesArePublicAndUp(String probe) {
         assertThat(api.get("/actuator/health" + probe).expect(200).<String>json("$.status")).isEqualTo("UP");

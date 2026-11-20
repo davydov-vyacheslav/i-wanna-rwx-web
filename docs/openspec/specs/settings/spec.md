@@ -1,13 +1,13 @@
 # Settings
 
-Account information, timezone and language. Notification preferences and install guidance are Phase 5/6 work (`docs/openspec/changes/push-notifications/`). Data sources and the TMDb key are owned by `datasource`.
+Account information, timezone and language. Notification preferences and install guidance are Phase 5 (install) and Phase 9 (notifications) work (`docs/openspec/changes/push-notifications/`). Data sources and the TMDb key are owned by `datasource`.
 
 Contract: `api/openapi.yaml`. Schema: `V001`. Visuals: `docs/design/design-system.md`; flows: `docs/design/INTERACTIONS.md`.
 
 ## Requirements
 
 ### Requirement: Settings navigation
-Settings SHALL be a top-level entry next to Books and Movies (bottom tab bar on phones, left sidebar from 768px; see `media`, Navigation shell), reachable in one tap from any list. Settings SHALL be one screen with the sections Account, Sources, Language and timezone (one group, a row each) and Account data in that order. On a wide screen the content column SHALL stay narrow and centered.
+Settings SHALL be a top-level entry next to Books and Movies (bottom tab bar on phones, left sidebar from 768px; see `media`, Navigation shell), reachable in one tap from any list. Settings SHALL be one screen with the sections Account, Sources, Language and timezone (one group, a row each), App (one row, only while not installed and installing is possible) and Account data in that order. On a wide screen the content column SHALL stay narrow and centered.
 
 #### Scenario: Reach Settings from a list
 - **WHEN** the user taps the Settings entry on any list
@@ -85,6 +85,25 @@ The UI language SHALL be the stored user locale (always set, fixed at sign-up fr
 - **WHEN** the language change request fails
 - **THEN** the UI keeps the previous language and shows an inline error
 
+### Requirement: Install row
+Settings SHALL show an "App" group with one row, between Language and timezone and Account data, only while the app is not running installed (not `display-mode: standalone` and not `navigator.standalone`) and installing is possible. Where `beforeinstallprompt` was captured the row reads "Install app" and tapping it opens the browser's install prompt once (the row is hidden after a dismissal and on `appinstalled`); on iPhone and iPad without that event it reads "Add to Home Screen" and opens a three-step walkthrough sheet (Share, Add to Home Screen, Add); in any other browser the row is not shown. The event SHALL be captured from app start, not only while Settings is open. The row has no stored state and no server call. Layout and wording: `docs/design/desktop.md` section 11.
+
+#### Scenario: iPhone in Safari
+- **WHEN** a user opens Settings on an iPhone in Safari
+- **THEN** the "Add to Home Screen" row is shown and opens the three steps
+
+#### Scenario: Android or desktop Chrome
+- **WHEN** the browser fired `beforeinstallprompt` before Settings was opened
+- **THEN** the "Install app" row is shown and tapping it opens the install prompt once
+
+#### Scenario: Already installed
+- **WHEN** the app runs standalone
+- **THEN** the row is not shown
+
+#### Scenario: Installed during the session
+- **WHEN** `appinstalled` fires
+- **THEN** the row disappears
+
 ### Requirement: Sources reference
 Settings SHALL include a "Sources" section whose behaviour (data sources per resource type, the user's default choice, API keys for sources that need one) is defined by the `datasource` capability ("Sources settings UI"). The section SHALL be an always-visible group inside the Settings screen (no new screen, nothing to expand), and a source that needs no key SHALL show no key control.
 
@@ -126,4 +145,4 @@ Module `settings` SHALL own one settings record per user (IANA timezone default 
 - **THEN** the response is 400 and nothing changes
 
 ### Requirement: Published preferences
-The module SHALL publish `SettingsService.get(userId)` returning an immutable `UserSettingsView` (the stored locale is never empty; an unknown user is an error) for other modules. `UserTimezones` and `UserTimezoneChangedEvent` are not published yet: they return with the scheduler in Phase 6 (the reminders module of Phase 4 does not use the stored timezone on the server).
+The module SHALL publish `SettingsService.get(userId)` returning an immutable `UserSettingsView` (the stored locale is never empty; an unknown user is an error) for other modules. `UserTimezones` and `UserTimezoneChangedEvent` are not published yet: they return with the scheduler in Phase 9 (the reminders module of Phase 4 does not use the stored timezone on the server).

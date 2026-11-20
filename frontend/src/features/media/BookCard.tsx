@@ -8,7 +8,7 @@ export { formatRating } from './MediaCard'
 
 type BookActions = ItemActions<Book>
 
-const BOOK_LABELS: MediaLabels = {
+export const BOOK_LABELS: MediaLabels = {
   seen: 'media.status.seen',
   markSeen: 'media.markSeen',
   markPlanned: 'media.markPlanned',
@@ -20,7 +20,7 @@ function BookCover({ book, locale, width, height }: { book: Book; locale: Locale
       href={coverTapUrl(book)}
       title={book.title}
       src={book.coverUrl}
-      placeholder={<BookIcon size={32} />}
+      kind="book"
       locale={locale}
       width={width}
       height={height}

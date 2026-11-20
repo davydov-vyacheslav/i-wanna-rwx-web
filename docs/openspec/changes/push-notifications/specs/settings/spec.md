@@ -1,4 +1,4 @@
-# Delta: settings (push-notifications, FUTURE, Phase 6)
+# Delta: settings (push-notifications, FUTURE, Phase 9)
 
 Moved out of the current `settings` spec because the tree has no push flag, push subscription or install flow.
 

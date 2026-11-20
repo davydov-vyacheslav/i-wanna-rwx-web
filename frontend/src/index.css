@@ -46,3 +46,18 @@ summary {
     transform: scale(0.96);
   }
 }
+
+/* a table row that left the list (deleted, hidden by a filter) fades out before it is removed */
+@keyframes row-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+/* a sheet or dialog is open: the list behind it stays put (the gutter keeps the layout from shifting) */
+main {
+  scrollbar-gutter: stable;
+}
+html[data-scroll-locked] main {
+  overflow: hidden;
+}

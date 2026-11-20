@@ -15,7 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @TestConfiguration(proxyBeanMethods = false)
-class TestInfra {
+public class TestInfra {
 
     // keep in sync with deploy/docker/docker-compose.yml
     @Bean

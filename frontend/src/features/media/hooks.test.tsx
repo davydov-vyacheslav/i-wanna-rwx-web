@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import { createApiClient } from '../../api/client'
-import { isMediaError, MediaError } from './errors'
+import { isApiError, ApiError } from '../../api/errors'
 import {
   BOOKS_KEY,
   MOVIES_KEY,
@@ -112,7 +112,7 @@ describe('list hooks', () => {
     })
     await waitFor(() => expect(result.current.error).not.toBeNull())
     expect(result.current.data).toHaveLength(1)
-    expect((result.current.error as MediaError).kind).toBe('network')
+    expect((result.current.error as ApiError).kind).toBe('network')
   })
 })
 
@@ -179,7 +179,7 @@ describe('book mutations', () => {
     await waitFor(() => expect(list.result.current.data).toHaveLength(1))
     const { result } = renderHook(() => useCreateBook(api), { wrapper })
     const err = await failure(() => result.current.mutateAsync({ id: ID2, sourceUrl: link('Dune') }))
-    expect(isMediaError(err)).toBe(true)
+    expect(isApiError(err)).toBe(true)
     expect(err).toMatchObject({ kind: 'duplicate', existingId: ID1, status: 409 })
     expect(qc.getQueryData<Book[]>(BOOKS_KEY)).toEqual([book()])
   })
@@ -320,7 +320,7 @@ describe('create: minimal body, provider problem codes, timeout', () => {
       create.result.current.mutateAsync({ id: ID1, sourceUrl: 'https://www.themoviedb.org/movie/1' }),
     )
     expect(err).toMatchObject({ kind, status })
-    if (status === 503) expect((err as MediaError).retryAfter).toBe(7)
+    if (status === 503) expect((err as ApiError).retryAfter).toBe(7)
     expect(qc.getQueryData<Movie[]>(MOVIES_KEY)).toEqual([])
   })
 

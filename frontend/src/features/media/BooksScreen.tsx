@@ -1,10 +1,11 @@
 import type { ApiClient } from '../../api/client'
 import type { Locale } from '../../i18n'
 import { AddSheet } from './AddSheet'
-import { BookCard, BookDetailSheet } from './BookCard'
+import { BOOK_LABELS, BookCard, BookDetailSheet } from './BookCard'
 import { useBooks, useCreateBook, useDeleteBook, useUpdateBook } from './hooks'
 import { BookIcon } from './icons'
 import { ListScreen, type ListData, type ListTexts } from './ListScreen'
+import { MediaTable, type TableSpec } from './MediaTable'
 import type { Book } from './types'
 
 const TEXTS: ListTexts = {
@@ -15,6 +16,8 @@ const TEXTS: ListTexts = {
   emptyAdd: 'media.empty.add',
   seenFilter: 'media.filter.seenBook',
 }
+
+const TABLE: TableSpec<Book> = { kind: 'book', labels: BOOK_LABELS, cover: (b) => b.coverUrl, author: (b) => b.author }
 
 /** Books list, self-contained: data hooks plus the shared `ListScreen` (state, filters, sort, sheets, toast). */
 export function BooksScreen({ locale, userId, api }: { locale: Locale; userId?: string; api?: ApiClient }) {
@@ -51,6 +54,9 @@ export function BooksScreen({ locale, userId, api }: { locale: Locale; userId?: 
         />
       )}
       emptyIcon={<BookIcon size={48} />}
+      renderTable={(rows, actions, loading) => (
+        <MediaTable rows={rows} spec={TABLE} locale={locale} api={api} actions={actions} loading={loading} />
+      )}
       renderCard={(b, actions) => <BookCard key={b.id} book={b} locale={locale} actions={actions} />}
       renderDetail={(b, actions, onClose) => (
         <BookDetailSheet book={b} locale={locale} actions={actions} onClose={onClose} />

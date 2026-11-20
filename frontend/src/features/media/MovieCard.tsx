@@ -7,13 +7,13 @@ import type { Movie } from './types'
 
 type MovieActions = ItemActions<Movie>
 
-const MOVIE_LABELS: MediaLabels = {
+export const MOVIE_LABELS: MediaLabels = {
   seen: 'media.movies.status.seen',
   markSeen: 'media.movies.markSeen',
   markPlanned: 'media.movies.markPlanned',
 }
 
-function TypeIcon({ type, size }: { type: Movie['type']; size?: number }) {
+export function TypeIcon({ type, size }: { type: Movie['type']; size?: number }) {
   return type === 'tv' ? <TvIcon size={size} /> : <FilmIcon size={size} />
 }
 
@@ -23,7 +23,7 @@ function MovieCover({ movie, locale, width, height }: { movie: Movie; locale: Lo
       href={coverTapUrl(movie)}
       title={movie.title}
       src={movie.posterUrl}
-      placeholder={<TypeIcon type={movie.type} size={32} />}
+      kind="movie"
       locale={locale}
       width={width}
       height={height}

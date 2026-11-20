@@ -6,9 +6,9 @@ import { t, type Locale } from '../../i18n'
 import { format } from '../../i18n/format'
 import { useDataSources } from '../settings/useDataSources'
 import { findByIsbn, findByLink, titleInLibrary, type LibraryItem } from './duplicates'
-import { isMediaError, type MediaError, type MediaErrorKind } from './errors'
+import { isApiError, type ApiError, type ApiErrorKind } from '../../api/errors'
 import { errorMessage, sourceLabels, type MessageOverrides } from './errorMessage'
-import { BookIcon, CheckIcon, FilmIcon, InfoIcon, TvIcon } from './icons'
+import { CheckIcon, FilmIcon, InfoIcon, TvIcon } from './icons'
 import { InlineNotice, NoticeAction } from './InlineNotice'
 import { CoverLink, YearRating } from './MediaCard'
 import { openSettings } from './openSettings'
@@ -20,7 +20,7 @@ import type { MediaKind } from './types'
 /** Row taps are ignored this long after the list changed (the draft row jumps while results arrive). */
 const SETTLE_MS = 300
 /** Failures of an add that a retry with the same id can fix. */
-const RETRYABLE: readonly MediaErrorKind[] = [
+const RETRYABLE: readonly ApiErrorKind[] = [
   'rate_limited',
   'provider_rate_limited',
   'provider_error',
@@ -30,8 +30,8 @@ const RETRYABLE: readonly MediaErrorKind[] = [
 ]
 
 /** The error when it says a source key is missing or refused. */
-function keyError(e: unknown): MediaError | undefined {
-  return isMediaError(e) && (e.kind === 'source_key_missing' || e.kind === 'source_key_invalid') ? e : undefined
+function keyError(e: unknown): ApiError | undefined {
+  return isApiError(e) && (e.kind === 'source_key_missing' || e.kind === 'source_key_invalid') ? e : undefined
 }
 
 /** A provider hit as the rows show it (a book hit or a movie/tv hit). */
@@ -212,7 +212,7 @@ export function AddSheet({
   function fail(sourceUrl: string, e: unknown) {
     busy.current = false
     setAdding(null)
-    if (isMediaError(e)) {
+    if (isApiError(e)) {
       if (e.kind === 'duplicate' && e.existingId) return onDuplicate(e.existingId)
       if (e.kind === 'source_not_found') setGone((g) => [...g, sourceUrl])
       // honour Retry-After: this entry waits until the server's wait is over
@@ -225,7 +225,7 @@ export function AddSheet({
         url: sourceUrl,
         action: { label: t(locale, 'media.add.openSettings'), onClick: closeAndOpenSettings },
       })
-    else if (isMediaError(e) && RETRYABLE.includes(e.kind))
+    else if (isApiError(e) && RETRYABLE.includes(e.kind))
       setAddNotice({
         message,
         url: sourceUrl,
@@ -364,22 +364,7 @@ export function AddSheet({
                       onClick={() => tap(row.sourceUrl)}
                       className={`${rowClass} flex items-center gap-3`}
                     >
-                      <CoverLink
-                        title={row.title}
-                        src={row.image}
-                        placeholder={
-                          kind === 'book' ? (
-                            <BookIcon size={24} />
-                          ) : row.type === 'tv' ? (
-                            <TvIcon size={24} />
-                          ) : (
-                            <FilmIcon size={24} />
-                          )
-                        }
-                        locale={locale}
-                        width={60}
-                        height={80}
-                      />
+                      <CoverLink title={row.title} src={row.image} kind={kind} locale={locale} width={60} height={80} />
                       <span className="min-w-0 flex-1">
                         <span className="line-clamp-2">{row.title}</span>
                         <span className="block font-normal">

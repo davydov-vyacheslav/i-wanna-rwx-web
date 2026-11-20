@@ -3,7 +3,7 @@
 Offline-first PWA (React) + Java 25 / Spring Boot 4 modular monolith. Rewrite of the iOS app "I Wanna RWX", which is a **behavioural reference only** (no data import). Decisions live in `docs/ROADMAP.md`; do not duplicate them here.
 
 ## Stack
-Java 25, Spring Boot 4, Gradle (Kotlin DSL), Spring Modulith, PostgreSQL + JPA + Flyway, OpenAPI-first (`openapi.yaml` generates server interfaces and the TS client), React + TS + Vite + Tailwind + TanStack Query (Dexie and Workbox arrive in the Offline/PWA phase 5). Docker Compose (local only), Helm on k3s.
+Java 25, Spring Boot 4, Gradle (Kotlin DSL), Spring Modulith, PostgreSQL + JPA + Flyway, OpenAPI-first (`openapi.yaml` generates server interfaces and the TS client), React + TS + Vite + Tailwind + TanStack Query (Workbox arrives in the PWA phase 5, Dexie in the offline sync phase 10). Docker Compose (local only), Helm on k3s.
 
 ## Conventions for specs
 - `docs/openspec/specs/<capability>/spec.md` = current behaviour (source of truth once a change is archived).
@@ -21,4 +21,4 @@ Java 25, Spring Boot 4, Gradle (Kotlin DSL), Spring Modulith, PostgreSQL + JPA +
 media, datasource (formerly `search`), reminders, identity, settings, offline-sync, platform (target behaviour of the PWA; iOS is a reference only)
 
 ## Pending changes
-Phases 2, 3 and 4 are done and archived in `changes/archive/`: `settings-module`, `settings-screen`, `datasource-defaults`, `datasource-simplification`, `datasource` (Phase 2), `media-core`, `media-search` (Phase 3, 2026-11-19), `reminders` (Phase 4, 2026-11-20); `project-skeleton` and `identity-github-oauth` too. Pending: `offline-sync` (Offline/PWA, roadmap phase 5) and `push-notifications` (Push, phase 6). There is no mock user or dev login anywhere; tests authenticate through a test-only helper. Schema (`V001`) and `api/openapi.yaml` are the source of truth; change docs must be aligned to them (see `docs/TODO.md`).
+Phases 2, 3, 4 and 5 are done and archived in `changes/archive/`: `settings-module`, `settings-screen`, `datasource-defaults`, `datasource-simplification`, `datasource` (Phase 2), `media-core`, `media-search` (Phase 3, 2026-11-19), `reminders` (Phase 4, 2026-11-20), `pwa-install` (Phase 5, 2026-11-21); `project-skeleton` and `identity-github-oauth` too. Pending: `offline-sync` (Offline sync, roadmap phase 10, after the first deploy) and `push-notifications` (Push, phase 9). There is no mock user or dev login anywhere; tests authenticate through a test-only helper. Schema (`V001`) and `api/openapi.yaml` are the source of truth; change docs must be aligned to them (see `docs/TODO.md`).

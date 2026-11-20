@@ -37,6 +37,12 @@ class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
+    // Image hosts: cover redirects go covers.openlibrary.org -> archive.org -> ia*.us.archive.org, and CSP checks every
+    // hop (a wildcard host does not match the bare domain). A new image host is added here and to COVER_HOSTS in the SW.
+    private static final String CONTENT_SECURITY_POLICY = "img-src 'self' data: https://covers.openlibrary.org "
+            + "https://archive.org https://*.archive.org https://image.tmdb.org https://avatars.githubusercontent.com; "
+            + "object-src 'none'; base-uri 'self'; frame-ancestors 'none'";
+
     // Explicit rather than server.servlet.session.cookie.*: Boot applies those only through an embedded web
     // server, so the SESSION cookie in the MockMvc tests lost HttpOnly (tried, SecurityFoundationTests failed).
     // Secure is derived from the request scheme, so it is set behind Traefik (X-Forwarded-Proto) and off on
@@ -94,6 +100,7 @@ class SecurityConfig {
                         .authorizedClientRepository(new DiscardingAuthorizedClientRepository())
                         .successHandler(loginSuccess)
                         .failureHandler(loginFailure()))
+                .headers(h -> h.contentSecurityPolicy(csp -> csp.policyDirectives(CONTENT_SECURITY_POLICY)))
                 .requestCache(rc -> rc.requestCache(new NullRequestCache()))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)

@@ -4,6 +4,7 @@ import { authSignal } from '../../api/client'
 import { t } from '../../i18n'
 import { ME, json, mountSettings, settings } from '../../test/fixtures'
 import type { UserSettings } from './useSettings'
+import { captureInstallEvents } from '../../pwa/install'
 import { zoneOptions } from './TimezoneSection'
 
 const mount = (
@@ -26,6 +27,27 @@ describe('Settings screen', () => {
     expect(await screen.findByText('octo cat')).toBeTruthy()
     const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
     expect(headings).toEqual(['Account', 'Sources', 'Language and timezone', 'Account data'])
+  })
+
+  it('desktop layout classes: select looks as on phones, without an outline, centered actions', async () => {
+    mount({})
+    await screen.findByText('octo cat')
+    const select = screen.getByRole('combobox', { name: 'Language' })
+    expect(select.className).not.toContain('md:bg-surface-2')
+    expect(select.className).toMatch(/(^| )outline-none/)
+    expect(screen.getByRole('button', { name: 'Sign out' }).className).not.toContain('text-left')
+  })
+
+  it('puts the App group between Language and Account data when installable', async () => {
+    const e = new Event('beforeinstallprompt', { cancelable: true })
+    Object.assign(e, { prompt: () => Promise.resolve() })
+    captureInstallEvents()
+    window.dispatchEvent(e)
+    mount({})
+    await screen.findByText('octo cat')
+    const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+    expect(headings).toEqual(['Account', 'Sources', 'Language and timezone', 'App', 'Account data'])
+    window.dispatchEvent(new Event('appinstalled'))
   })
 
   it('shows initials when avatarUrl is null', () => {

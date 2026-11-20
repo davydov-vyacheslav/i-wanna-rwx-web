@@ -2,7 +2,7 @@
 
 Subscriptions and licenses, online-first. Reuses the existing components (`Sheet`, `ConfirmDialog`, `Toast`, `SelectRow`, list page, card, tri-state row, filter sheet, swipe-to-delete) and the tokens in `frontend/src/theme.css`; nothing new visually except one shared segmented control (extracted from the former Movies `TypeSegments`). Rules: `docs/openspec/specs/reminders/spec.md` and `docs/openspec/changes/archive/reminders/design.md` section 8. Generic rules (safe areas, 44pt, focus, motion, sheets/dialogs from `md`) are in `design-system.md` and are not repeated.
 
-Out of this phase, so not designed: notification hint/banner, push-denied, sync-pending, sync-error, offline cache (Phase 5/6). Prototype HTML is not extended (the existing `app.html` keeps Reminders disabled); this spec is the reference.
+Out of this phase, so not designed: notification hint/banner, push-denied, sync-pending, sync-error, offline cache (Phase 9, and the offline sync phase 10). Prototype HTML is not extended (the existing `app.html` keeps Reminders disabled); this spec is the reference.
 
 ## 1. Navigation and segmented control
 
@@ -50,7 +50,7 @@ Expired is the only solid badge, so it stays distinguishable from critical witho
 | No match | search icon, "Nothing matches", secondary `Reset` (resets the filter), count `0 of N`. Deleting the last visible item under a filter shows this, not empty. |
 | Loading | 4 skeleton cards (about 88px high, text lines only, no cover block), `aria-busy`, no count; the segmented control and filter button are already usable. |
 | Load error | full-area message and `Retry` (44px), segmented control stays. |
-| Offline (Phase 4: online-first, no cache) | A failed load while the network is down shows the load-error state with the wording "You are offline. Check the connection and retry." A failed write (create, edit, renew, delete) keeps everything as it was, keeps the sheet open with the typed values, and shows the failure in the sheet's alert area (list screens: the toast), wording "No connection. Nothing was saved." There is no banner, no pending dot and no queue before Phase 5. |
+| Offline (Phase 4: online-first, no cache) | A failed load while the network is down shows the load-error state with the wording "You are offline. Check the connection and retry." A failed write (create, edit, renew, delete) keeps everything as it was, keeps the sheet open with the typed values, and shows the failure in the sheet's alert area (list screens: the toast), wording "No connection. Nothing was saved." There is no banner, no pending dot and no queue before the offline sync phase (10). |
 | Server errors | 400 `validation`: message next to the field when the field is known (expiry, custom days, remind days) else the sheet alert; 404/410 on a row: it leaves the list with a toast "This item no longer exists"; 5xx: sheet alert / toast with the generic message. |
 | Sync pending, sync error, push denied | not applicable in Phase 4 (Phases 5 and 6). |
 
@@ -85,7 +85,7 @@ Opens from the card, content height, header `Close`. No cover: a grouped list li
 
 Renewed: enabled only for Monthly, Yearly and Custom. For One-off and Lifetime it is disabled (`aria-disabled`, 60% opacity) and a footnote under it says "One-off and lifetime items can't be renewed." Tapping it sends the shown date as `expectedExpiryDate`, shows a spinner in the button and disables it; no optimistic update (the date is computed by the server). On success the date row and badge update in place and a toast shows "Renewed until 15 Apr 2026" (a stale no-op simply shows the current server date). Failure: the toast with the reason (offline, past 2999 "Can't renew: the date would be out of range"), nothing changes. An overdue item may stay overdue after one renewal; the user taps again (spec).
 
-Delete (button or swipe): the existing `ConfirmDialog` (centered everywhere, Cancel focused): title "Delete this item?", body `"{name}" will be deleted. This cannot be undone.` (license: the key is deleted with it), confirm `Delete` in danger. It waits for the server; no Undo before Phase 5; a failure keeps the row and shows a toast.
+Delete (button or swipe): the existing `ConfirmDialog` (centered everywhere, Cancel focused): title "Delete this item?", body `"{name}" will be deleted. This cannot be undone.` (license: the key is deleted with it), confirm `Delete` in danger. It waits for the server; no Undo before the offline sync phase (10); a failure keeps the row and shows a toast.
 
 ## 7. Touch, safe areas, dark mode, i18n
 

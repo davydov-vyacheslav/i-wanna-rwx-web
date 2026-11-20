@@ -1,6 +1,6 @@
 import { client as defaultClient, type ApiClient } from '../../api/client'
 import type { components } from '../../api/schema'
-import { call, callApi, errorFromResponse } from './errors'
+import { call, callApi, errorFromResponse } from '../../api/errors'
 
 /**
  * Create sends identity only: `{id, sourceUrl}` for every kind of entry (draft link or, from media-search on, a
@@ -19,7 +19,7 @@ type UpdateMovieRequest = components['schemas']['UpdateMovieRequest']
 
 /**
  * The data seam for media: every call goes to the API through the shared client (CSRF header, 401 signal); the
- * Offline/PWA phase replaces the bodies with "write cache + outbox". Failures throw `MediaError`; nothing is queued.
+ * The offline sync phase (roadmap phase 10) replaces the bodies with "write cache + outbox". Failures throw `ApiError`; nothing is queued.
  * `create*` resolves with the stored record for both 201 (created) and 200 (same id re-POSTed). `get*Details` take a
  * `sourceUrl` (a hit's link or a stored `externalLink`); display only, nothing is stored.
  */

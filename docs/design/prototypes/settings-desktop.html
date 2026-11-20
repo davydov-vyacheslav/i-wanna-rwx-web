@@ -1,0 +1,126 @@
+<!doctype html>
+<!-- Settings at desktop widths (docs/design/desktop.md section 15). Plain CSS on the real tokens (theme.css); no build.
+     Open at 768 / 1024 / 1440 / 1920. Query: ?theme=light|dark  ?lang=en|ru|uk  ?state=loading|error|empty (Sources state)
+     Click "Add key" / "Replace key" to see the key dialog. Sources shown are SAMPLE data (the shipped registry has fewer). -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>RWX Settings, desktop</title>
+<link rel="stylesheet" href="../../../frontend/src/theme.css">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/20px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;display:flex}
+button,select,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer;text-align:left}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* sidebar (as the shipped one, abbreviated) */
+aside{width:14rem;flex:none;background:var(--surface);border-right:.5px solid var(--separator);padding:12px;overflow:auto}
+aside .i{display:flex;align-items:center;min-height:44px;padding:0 12px;border-radius:12px;color:var(--text-2);font-size:16px;margin-bottom:4px}
+aside .i.sub{font-size:15px;margin:0 0 2px 36px}
+aside .cur{background:var(--accent-soft);color:var(--accent);font-weight:600}
+main{flex:1;min-width:0;overflow-y:auto;height:100dvh}
+.col{max-width:56rem;margin:0 auto;padding:0 16px 48px}
+h1{font-size:30px;line-height:36px;font-weight:700;margin:0;padding-top:8px}
+/* a group: heading rail + card. Below lg the heading sits above the card (phone look). */
+.grp{margin-top:24px}
+.grp>h2{margin:0;padding:0 16px 8px;font-size:13px;line-height:18px;font-weight:600;text-transform:uppercase;color:var(--text-2)}
+.card{background:var(--surface);border-radius:16px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px}
+.row+.row,.card>*+*{border-top:.5px solid var(--separator)}
+.act{display:flex;align-items:center;width:100%;min-height:44px;padding:4px 16px;font-size:16px}
+.avatar{width:44px;height:44px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.sel{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:0 16px}
+.sel label{font-size:16px;flex:none}
+.sel select{height:44px;width:16rem;max-width:100%;min-width:0;background:var(--surface-2);border:0;border-radius:12px;padding:0 12px;font-size:16px;color:var(--text)}
+.sub{font-size:13px;line-height:18px;color:var(--text-2)}
+/* sources */
+.type{padding:12px 16px 4px;font-size:13px;font-weight:600;color:var(--text-2)}
+.src{display:grid;grid-template-columns:1fr auto;column-gap:12px;align-items:center;min-height:52px;padding:4px 16px;border-top:.5px solid var(--separator)}
+.type+.src{border-top:0}
+.src .name{grid-column:1;grid-row:1;display:flex;align-items:center;gap:12px;min-width:0;min-height:44px}
+.src .name b{font-weight:400;font-size:16px;line-height:22px;overflow-wrap:anywhere}
+.src .hint{display:block;font-size:13px;line-height:18px;font-weight:600;color:var(--warn)}
+.src .state{grid-column:1;grid-row:2;padding:0 0 6px 32px;font-size:13px;line-height:18px;display:inline-flex;align-items:center;gap:6px}
+.src .btn{grid-column:2;grid-row:1/3}
+.ok{color:var(--seen)}.bad{color:var(--danger)}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--text-2);flex:none;display:flex;align-items:center;justify-content:center}
+.radio.on{border-color:var(--accent)}.radio.on:after{content:"";width:10px;height:10px;border-radius:50%;background:var(--accent)}
+.btn{min-height:44px;padding:0 12px;border-radius:12px;color:var(--accent);font-weight:600;font-size:15px;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center}
+.btn:hover{background:var(--surface-2)}
+.na{width:0}
+/* lg: rail + three-column rows */
+@media (min-width:1024px){
+  .grp{display:grid;grid-template-columns:12rem 1fr;column-gap:32px;margin-top:32px}
+  .grp>h2{padding:12px 0 0;font-size:15px;line-height:20px;text-transform:none;color:var(--text)}
+  .src{grid-template-columns:1fr 10rem 9rem}
+  .src .state{grid-column:2;grid-row:1;padding:0}
+  .src .btn{grid-column:3;grid-row:1;justify-self:end;min-width:8.25rem}
+}
+@media (max-width:767px){aside{display:none}.sel select{width:auto;background:none;text-align:right;color:var(--text-2)}}
+/* dialog */
+.scrim{position:fixed;inset:0;background:var(--scrim);display:none;align-items:center;justify-content:center;padding:16px}
+.scrim.open{display:flex}
+.dlg{background:var(--surface);border-radius:24px;box-shadow:0 12px 40px rgba(0,0,0,.3);width:100%;max-width:28rem;padding:20px}
+.dlg h3{margin:0 0 4px;font-size:17px;line-height:22px}
+.dlg input{width:100%;height:44px;border:0;border-radius:12px;background:var(--surface-2);padding:0 12px;font-size:16px;margin-top:12px}
+.dlg .f{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.dlg .f button{min-height:44px;padding:0 16px;border-radius:12px;font-weight:600}
+.dlg .go{background:var(--accent);color:var(--on-accent)}
+.dlg .rm{color:var(--danger);margin-right:auto}
+.msg{padding:12px 16px;background:var(--danger-bg);color:var(--danger)}
+</style>
+</head>
+<body>
+<aside aria-hidden="true">
+  <div class="i">Media</div><div class="i sub">Books</div><div class="i sub">Movies</div>
+  <div class="i">Reminders</div><div class="i sub">Subscriptions</div><div class="i sub">Licenses</div>
+  <div class="i cur" id="sbs">Settings</div>
+</aside>
+<main><div class="col" id="app"></div></main>
+<div class="scrim" id="scrim"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dt">
+  <h3 id="dt"></h3><p class="sub" id="dh" style="margin:0"></p>
+  <input id="di" type="password" autocomplete="off">
+  <div class="f"><button class="rm" id="drm"></button><button id="dc"></button><button class="go" id="dg"></button></div>
+</div></div>
+<script>
+const q=new URLSearchParams(location.search),lang=q.get('lang')||'en',th=q.get('theme'),state=q.get('state')||'';
+if(th)document.documentElement.dataset.theme=th;document.documentElement.lang=lang;
+const S={
+en:{title:'Settings',nav:'Settings',acc:'Account',as:'Signed in as',out:'Sign out',src:'Sources',b:'Books',m:'Movies and TV',av:'Available',nk:'Needs an API key',dn:'Add a key or pick another source',ks:'Save key',kr:'Replace key',kt:'{s}: API key',kh:'Paste an API key for {s}.',kp:'API key',kpr:'New key (replaces the saved one)',rm:'Remove key',cn:'Cancel',reg:'Language and timezone',lang:'Language',tz:'Timezone',dev:'Use device timezone (Europe/Kyiv)',app:'App',ios:'Add to Home Screen',note:'Opens full screen like an app. On iPhone, reminder notifications need it.',data:'Account data',exp:'Export my data',del:'Delete account',load:'Loading sources',err:'Could not load sources.',retry:'Retry'},
+ru:{title:'Настройки',nav:'Настройки',acc:'Аккаунт',as:'Вы вошли как',out:'Выйти',src:'Источники',b:'Книги',m:'Фильмы и сериалы',av:'Доступен',nk:'Нужен ключ API',dn:'Добавьте ключ или выберите другой источник',ks:'Сохранить ключ',kr:'Заменить ключ',kt:'{s}: ключ API',kh:'Вставьте ключ API для {s}.',kp:'Ключ API',kpr:'Новый ключ (заменит сохранённый)',rm:'Удалить ключ',cn:'Отмена',reg:'Язык и часовой пояс',lang:'Язык',tz:'Часовой пояс',dev:'Использовать часовой пояс устройства (Europe/Kyiv)',app:'Приложение',ios:'На экран «Домой»',note:'Открывается на весь экран как приложение. На iPhone уведомления о напоминаниях работают только так.',data:'Данные аккаунта',exp:'Экспортировать мои данные',del:'Удалить аккаунт',load:'Загрузка источников',err:'Не удалось загрузить источники.',retry:'Повторить'},
+uk:{title:'Налаштування',nav:'Налаштування',acc:'Обліковий запис',as:'Ви увійшли як',out:'Вийти',src:'Джерела',b:'Книги',m:'Фільми та серіали',av:'Доступне',nk:'Потрібен ключ API',dn:'Додайте ключ або оберіть інше джерело',ks:'Зберегти ключ',kr:'Замінити ключ',kt:'{s}: ключ API',kh:'Вставте ключ API для {s}.',kp:'Ключ API',kpr:'Новий ключ (замінить збережений)',rm:'Видалити ключ',cn:'Скасувати',reg:'Мова та часовий пояс',lang:'Мова',tz:'Часовий пояс',dev:'Використовувати часовий пояс пристрою (Europe/Kyiv)',app:'Застосунок',ios:'На екран «Додому»',note:'Відкривається на весь екран як застосунок. На iPhone сповіщення про нагадування працюють лише так.',data:'Дані облікового запису',exp:'Експортувати мої дані',del:'Видалити обліковий запис',load:'Завантаження джерел',err:'Не вдалося завантажити джерела.',retry:'Повторити'}
+}[lang];
+// sample sources: key = requires a key, saved = key stored, def = default
+const books=[{n:'Open Library',key:0,def:1},{n:'Google Books',key:1,saved:1},{n:'ISBNdb',key:1,saved:0}];
+const movies=[{n:'TMDb',key:1,saved:0,def:1},{n:'OMDb',key:1,saved:1},{n:'TVmaze',key:0},{n:'Kinopoisk Unofficial',key:1,saved:0}];
+const chk='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>';
+const bang='<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.5"/></svg>';
+function row(s,g){const ready=!s.key||s.saved,hint=s.def&&!ready;
+ return `<div class="src"><div class="name" role="radio" aria-checked="${!!s.def}" tabindex="0"><span class="radio${s.def?' on':''}"></span><span><b>${s.n}</b>${hint?`<span class="hint">${S.dn}</span>`:''}</span></div>
+ <span class="state ${ready?'ok':'bad'}">${ready?chk+S.av:bang+S.nk}</span>
+ ${s.key?`<button class="btn" data-k="${s.n}" data-saved="${s.saved?1:0}">${s.saved?S.kr:S.ks}</button>`:'<span class="btn na"></span>'}</div>`}
+const grp=(t,body)=>`<section class="grp"><h2>${t}</h2><div class="card">${body}</div></section>`;
+const sel=(l,opts)=>`<div class="sel"><label>${l}</label><select>${opts}</select></div>`;
+let srcBody;
+if(state==='loading')srcBody=`<div class="row" role="status" style="color:var(--text-2)">${S.load}</div>`;
+else if(state==='error')srcBody=`<div class="row" style="justify-content:space-between"><p class="bad" role="alert" style="margin:0">${S.err}</p><button class="btn">${S.retry}</button></div>`;
+else srcBody=`<div class="type">${S.b}</div><div role="radiogroup">${books.map(row).join('')}</div><div class="type" style="border-top:.5px solid var(--separator);margin-top:4px">${S.m}</div><div role="radiogroup">${movies.map(row).join('')}</div>`;
+app.innerHTML=`<h1>${S.title}</h1>`+
+ grp(S.acc,`<div class="row" style="min-height:60px"><span class="avatar">VD</span><p style="margin:0"><span class="sub" style="display:block">${S.as}</span><b>Vyacheslav Davydov</b></p></div><button class="act">${S.out}</button>`)+
+ grp(S.src,srcBody)+
+ grp(S.reg,sel(S.lang,'<option>English</option><option>Русский</option><option>Українська</option>')+`<div>${sel(S.tz,'<option>Europe/Kyiv</option>')}</div><button class="act" style="color:var(--accent);font-weight:600">${S.dev}</button>`)+
+ grp(S.app,`<button class="act" style="flex-direction:column;align-items:flex-start;padding:8px 16px"><span style="color:var(--accent);font-weight:600;font-size:16px">${S.ios}</span><span class="sub">${S.note}</span></button>`)+
+ grp(S.data,`<button class="act" style="color:var(--accent);font-weight:600">${S.exp}</button><button class="act" style="color:var(--danger);font-weight:700">${S.del}</button>`);
+document.getElementById('sbs').textContent=S.nav;
+const sc=document.getElementById('scrim'),di=document.getElementById('di');let opener;
+app.addEventListener('click',e=>{const b=e.target.closest('[data-k]');if(!b)return;opener=b;const s=b.dataset.k,sv=b.dataset.saved==='1';
+ dt.textContent=S.kt.replace('{s}',s);dh.textContent=S.kh.replace('{s}',s);di.placeholder=sv?S.kpr:S.kp;di.value='';
+ drm.textContent=S.rm;drm.style.display=sv?'':'none';dc.textContent=S.cn;dg.textContent=sv?S.kr:S.ks;sc.classList.add('open');di.focus()});
+const close=()=>{sc.classList.remove('open');opener&&opener.focus()};
+dc.onclick=close;dg.onclick=close;drm.onclick=close;addEventListener('keydown',e=>{if(e.key==='Escape')close()});
+</script>
+</body>
+</html>

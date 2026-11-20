@@ -1,8 +1,8 @@
-import { isMediaError, type MediaErrorKind } from './errors'
+import { isApiError, type ApiErrorKind } from '../../api/errors'
 import { t, type Locale, type MessageKey } from '../../i18n'
 import { format } from '../../i18n/format'
 
-const KEYS: Partial<Record<MediaErrorKind, MessageKey>> = {
+const KEYS: Partial<Record<ApiErrorKind, MessageKey>> = {
   duplicate: 'media.error.duplicate',
   gone: 'media.error.gone',
   not_found: 'media.error.not_found',
@@ -19,11 +19,11 @@ const KEYS: Partial<Record<MediaErrorKind, MessageKey>> = {
 }
 
 /** Per-screen wording (search, series refresh) for the kinds whose default text talks about adding. */
-export type MessageOverrides = Partial<Record<MediaErrorKind, MessageKey>>
+export type MessageOverrides = Partial<Record<ApiErrorKind, MessageKey>>
 
 /** Message key for a failed repository call; everything unlisted (400, 401, 403, 5xx) is the generic one. */
 function errorMessageKey(error: unknown, overrides: MessageOverrides = {}): MessageKey {
-  if (!isMediaError(error)) return overrides.server ?? 'media.error.server'
+  if (!isApiError(error)) return overrides.server ?? 'media.error.server'
   return overrides[error.kind] ?? KEYS[error.kind] ?? overrides.server ?? 'media.error.server'
 }
 
@@ -39,7 +39,7 @@ export function errorMessage(
   { overrides, fallbackSource = '' }: { overrides?: MessageOverrides; fallbackSource?: string } = {},
 ): string {
   const text = t(locale, errorMessageKey(error, overrides))
-  if (!isMediaError(error)) return text
+  if (!isApiError(error)) return text
   const id = error.source
   return format(text, { source: id ? (labels[id] ?? id) : fallbackSource })
 }

@@ -1,7 +1,7 @@
 # Tasks: offline-sync
-Phase: Offline/PWA (roadmap phase 5), after `identity-github-oauth`, `media-core`, `media-search`. Prerequisite: media-core's `repository.ts` seam and service methods.
+Phase: Offline sync (roadmap phase 10, after the first deploy; re-planned 2026-11-20, was part of the Offline/PWA phase), after `identity-github-oauth`, `media-core`, `media-search`. Prerequisite: media-core's `repository.ts` seam and service methods.
 
-Not in the tree after the Phase 2 cleanup (2026-11-18), to be restored from `refs/shelf/pre-cleanup` as the first step: Flyway columns `version`, `change_seq`, `deleted_at` and `applied_mutations` in V001; OpenAPI `/sync/push`, `/sync/pull` and the mutation, result and change schemas. `/push-subscriptions` belongs to Phase 6.
+Not in the tree after the Phase 2 cleanup (2026-11-18), to be restored from `refs/shelf/pre-cleanup` as the first step: Flyway columns `version`, `change_seq`, `deleted_at` and `applied_mutations` in V001; OpenAPI `/sync/push`, `/sync/pull` and the mutation, result and change schemas. `/push-subscriptions` belongs to Phase 9.
 
 - [ ] 0. Backend `MediaMutations` published API (apply book/movie upsert/delete with base version -> applied/noop/rejected with reason and conflict flag; same service path as REST; tests: stale base version -> applied with conflict flag, tombstoned -> `gone`, foreign id -> `not_found`, changed `externalId` -> `immutable_field`). (backend, moved from media-core B9)
 - [ ] 1. Server push handler: per-mutation transaction, `applied_mutations` idempotency (including concurrent duplicates), LWW + `conflict`, tombstones and `gone`, `renew` no-op rule, per-user isolation (`not_found`), shared with the REST services; `applied_mutations.result` holds only status, conflict, reason, existingId, version and replay rebuilds `record` from the live row (test: no license key in the stored JSON). Integration tests on real Postgres. (backend)

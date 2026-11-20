@@ -78,6 +78,7 @@ export function KeyDialog({
       role="dialog"
       tone="accent"
       initialFocus="content"
+      width="max-w-md"
       title={format(t(locale, 'sources.keyTitle'), { source: source.label })}
       body={help ? t(locale, help.message) : format(t(locale, 'sources.keyHint'), { source: source.label })}
       confirmLabel={t(locale, source.tokenSaved ? 'sources.keyReplace' : 'sources.keySave')}

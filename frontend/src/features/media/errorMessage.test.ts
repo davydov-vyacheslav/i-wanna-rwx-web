@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { errorMessage } from './errorMessage'
-import { errorFromResponse } from './errors'
+import { errorFromResponse } from '../../api/errors'
 
 const problem = (code: string, source?: string) => ({ title: 'x', status: 409, code, ...(source ? { source } : {}) })
 

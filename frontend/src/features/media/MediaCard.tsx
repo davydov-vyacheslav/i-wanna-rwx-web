@@ -1,9 +1,10 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { Cover } from '../../components/Cover'
 import { Sheet } from '../../components/Sheet'
 import { t, type Locale, type MessageKey } from '../../i18n'
 import { format } from '../../i18n/format'
 import { CheckIcon, ClockIcon, EyeIcon, HeartIcon, StarIcon, TrashIcon } from './icons'
-import { isDraft, type ListItem } from './types'
+import { isDraft, type ListItem, type MediaKind } from './types'
 
 /** Message keys that differ between lists (books are "read", movies "watched"). */
 export interface MediaLabels {
@@ -24,13 +25,24 @@ export function formatRating(rating: number | undefined, locale: Locale): string
   return new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(rating)
 }
 
-function StatusBadge({ status, locale, seenKey }: { status: ListItem['status']; locale: Locale; seenKey: MessageKey }) {
+/** `compact` is the 16px row badge of the tables (the size of the reminders urgency badge). */
+export function StatusBadge({
+  status,
+  locale,
+  seenKey,
+  compact,
+}: {
+  status: ListItem['status']
+  locale: Locale
+  seenKey: MessageKey
+  compact?: boolean
+}) {
   const seen = status === 'seen'
   return (
     <span
-      className={`text-chip inline-flex min-h-[22px] items-center gap-1 rounded-full px-2 font-medium ${
-        seen ? 'bg-seen-bg text-seen' : 'bg-planned-bg text-planned'
-      }`}
+      className={`inline-flex items-center rounded-full font-medium ${
+        compact ? 'min-h-4 gap-0.5 px-1.5 text-[10px] leading-3 [&_svg]:size-2.5' : 'text-chip min-h-[22px] gap-1 px-2'
+      } ${seen ? 'bg-seen-bg text-seen' : 'bg-planned-bg text-planned'}`}
     >
       {seen ? <CheckIcon /> : <ClockIcon />}
       {t(locale, seen ? seenKey : 'media.status.planned')}
@@ -50,7 +62,7 @@ function sourceLabel(locale: Locale, source: string): string {
   return key ? t(locale, key) : source
 }
 
-function SourceBadge({ item, locale }: { item: ListItem; locale: Locale }) {
+export function SourceBadge({ item, locale }: { item: ListItem; locale: Locale }) {
   return (
     <span className="bg-surface-2 text-ink-2 text-chip inline-flex min-h-[22px] items-center rounded-full px-2 font-medium">
       {sourceLabel(locale, item.source)}
@@ -58,12 +70,12 @@ function SourceBadge({ item, locale }: { item: ListItem; locale: Locale }) {
   )
 }
 
-/** Cover button: opens the source page in a new tab; a placeholder when there is no (or a broken) cover. */
+/** Cover button: opens the source page in a new tab; without a vetted link the cover is plain. */
 export function CoverLink({
   href,
   title,
   src,
-  placeholder,
+  kind,
   locale,
   width,
   height,
@@ -72,45 +84,22 @@ export function CoverLink({
   href?: string
   title: string
   src?: string
-  placeholder: ReactNode
+  kind: MediaKind
   locale: Locale
   width: number
   height: number
 }) {
-  const [broken, setBroken] = useState(false)
-  const className = 'bg-surface-2 text-draft flex shrink-0 items-center justify-center overflow-hidden rounded-sm'
-  const content = (
-    <>
-      {src && !broken ? (
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setBroken(true)}
-          className="size-full object-cover"
-        />
-      ) : (
-        placeholder
-      )}
-    </>
-  )
-  if (!href)
-    return (
-      <div style={{ width, height }} className={className}>
-        {content}
-      </div>
-    )
+  const cover = <Cover src={src} kind={kind} width={width} height={height} />
+  if (!href) return cover
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
       aria-label={format(t(locale, 'media.openSourceFor'), { title })}
-      style={{ width, height }}
-      className={className}
+      className="shrink-0"
     >
-      {content}
+      {cover}
     </a>
   )
 }
@@ -242,7 +231,7 @@ export function MediaDetailSheet<T extends ListItem>({
   const fav = item.isFavorite === true
   const seen = item.status === 'seen'
   return (
-    <Sheet title={item.title} closeLabel={t(locale, 'media.close')} onClose={onClose}>
+    <Sheet title={item.title} oneLine closeLabel={t(locale, 'media.close')} onClose={onClose}>
       <div className="flex gap-4">
         {cover}
         <div className="min-w-0 flex-1">

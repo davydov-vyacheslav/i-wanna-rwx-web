@@ -6,7 +6,7 @@ import { t, type Locale } from '../../i18n'
 import { format } from '../../i18n/format'
 import { useDataSources } from '../settings/useDataSources'
 import { errorMessage, sourceLabels, type MessageOverrides } from './errorMessage'
-import { isMediaError } from './errors'
+import { isApiError } from '../../api/errors'
 import { useUpdateMovie } from './hooks'
 import { InlineNotice, NoticeAction } from './InlineNotice'
 import { openSettings } from './openSettings'
@@ -59,8 +59,8 @@ export function TvRefreshSheet({
     return () => void (stopped.current = true)
   }, [])
 
-  const keyMissing = isMediaError(error) && error.kind === 'source_key_missing'
-  const keyInvalid = isMediaError(error) && error.kind === 'source_key_invalid'
+  const keyMissing = isApiError(error) && error.kind === 'source_key_missing'
+  const keyInvalid = isApiError(error) && error.kind === 'source_key_invalid'
 
   const labels = sourceLabels(dataSources.sources)
 
@@ -68,7 +68,7 @@ export function TvRefreshSheet({
     try {
       return await repo.getMovieDetails(url)
     } catch (e) {
-      if (!isMediaError(e) || (e.kind !== 'rate_limited' && e.kind !== 'provider_rate_limited')) throw e
+      if (!isApiError(e) || (e.kind !== 'rate_limited' && e.kind !== 'provider_rate_limited')) throw e
       await sleep(e.retryAfter !== undefined ? e.retryAfter * 1000 : BACKOFF_MS)
       return repo.getMovieDetails(url)
     }
@@ -87,7 +87,7 @@ export function TvRefreshSheet({
         try {
           d = await details(m.externalLink)
         } catch (e) {
-          if (isMediaError(e) && (SKIP.includes(e.kind) || e.fieldErrors.some((f) => f.field === 'sourceUrl'))) continue
+          if (isApiError(e) && (SKIP.includes(e.kind) || e.fieldErrors.some((f) => f.field === 'sourceUrl'))) continue
           throw e
         }
         checked++

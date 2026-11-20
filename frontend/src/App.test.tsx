@@ -53,13 +53,36 @@ beforeEach(() => {
 })
 
 describe('auth gate', () => {
-  it('401 shows only the login button', async () => {
+  it('401 shows the signed-out panel: one link, no buttons, no navigation', async () => {
     renderApp(401)
     const link = await screen.findByRole('link', { name: t('en', 'login.signIn') })
     expect(link.getAttribute('href')).toBe('/oauth2/authorization/github')
     expect(screen.queryAllByRole('link')).toHaveLength(1)
     expect(screen.queryAllByRole('button')).toHaveLength(0)
+    expect(screen.queryByRole('navigation')).toBeNull()
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('splash and panel show the same icon; no shell before /me answers; a deep link stays untouched', async () => {
+    window.history.replaceState(null, '', '/#/movies')
+    renderApp(401)
+    const splash = screen.getByRole('status')
+    const splashIcon = splash.querySelector('img')!
+    expect(document.querySelector('[inert]')).toBeNull()
+    expect(screen.queryByRole('navigation')).toBeNull()
+    await screen.findByRole('link', { name: t('en', 'login.signIn') })
+    const icon = document.querySelector('main img')!
+    expect(icon.getAttribute('src')).toBe(splashIcon.getAttribute('src'))
+    expect(icon.className).toBe(splashIcon.className)
+    expect(window.location.hash).toBe('#/movies')
+  })
+
+  it('signed in: the splash is followed by the shell, never by the decorative sidebar', async () => {
+    window.history.replaceState(null, '', '/')
+    renderApp(200)
+    expect(document.querySelector('[inert]')).toBeNull()
+    await screen.findByRole('heading', { name: 'Books', level: 1 })
+    expect(document.querySelector('div[aria-hidden="true"][inert].opacity-40')).toBeNull()
   })
 
   it('signed in shows the shell on Books, not the login button', async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, type ReactNode } from 'react'
 import { currentOpener, focusQuietly } from './opener'
 import { Spinner } from './Spinner'
+import { useScrollLock } from './useScrollLock'
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), a[href]'
 
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   tone = 'danger',
   initialFocus = 'cancel',
   confirmDisabled,
+  width = 'max-w-sm',
 }: {
   title: string
   body: string
@@ -41,7 +43,10 @@ export function ConfirmDialog({
   /** `content`: the caller focuses a field itself (`autoFocus`) instead of Cancel. */
   initialFocus?: 'cancel' | 'content'
   confirmDisabled?: boolean
+  /** Tailwind max-width class of the panel. */
+  width?: string
 }) {
+  useScrollLock()
   const panel = useRef<HTMLDivElement>(null)
   const cancelButton = useRef<HTMLButtonElement>(null)
   const fired = useRef(false)
@@ -127,7 +132,7 @@ export function ConfirmDialog({
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         tabIndex={-1}
-        className="bg-surface border-separator outline-none text-ink shadow-dialog md:motion-safe:animate-[dialog-in_160ms_ease-out] border-[0.5px] rounded-card relative max-h-[88dvh] w-full max-w-sm overflow-y-auto p-5"
+        className={`bg-surface border-separator outline-none text-ink shadow-dialog md:motion-safe:animate-[dialog-in_160ms_ease-out] border-[0.5px] rounded-card relative max-h-[88dvh] w-full ${width} overflow-y-auto p-5`}
       >
         <h2 id={titleId} className="text-sheet font-semibold">
           {title}

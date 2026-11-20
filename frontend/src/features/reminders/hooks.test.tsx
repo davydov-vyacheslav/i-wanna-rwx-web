@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { describe, expect, it } from 'vitest'
 import { createApiClient } from '../../api/client'
 import { json } from '../../test/fixtures'
-import { isMediaError } from '../media/errors'
+import { isApiError } from '../../api/errors'
 import {
   remindersKey,
   useCreateReminder,
@@ -91,7 +91,7 @@ describe.each(TYPES)('%s hooks', (type) => {
       remindDays: 3,
     } as const
     const err = await failure(() => result.current.mutateAsync(body))
-    expect(isMediaError(err) && err.kind).toBe('network')
+    expect(isApiError(err) && err.kind).toBe('network')
     expect(qc.getQueryData(key)).toEqual([])
     fail = false
     await act(async () => {
@@ -151,7 +151,7 @@ describe.each(TYPES)('%s hooks', (type) => {
     qc.setQueryData(key, [row()])
     const { result } = renderHook(() => useRenewReminder(type, api), { wrapper })
     const err = await failure(() => result.current.mutateAsync({ id: ID1, expectedExpiryDate: '2026-03-15' }))
-    expect(isMediaError(err) && err.kind).toBe('network')
+    expect(isApiError(err) && err.kind).toBe('network')
     expect(qc.getQueryData(key)).toEqual([row()])
     expect(calls).toHaveLength(1)
   })
@@ -163,7 +163,7 @@ describe.each(TYPES)('%s hooks', (type) => {
     const err = await failure(() =>
       create.result.current.mutateAsync({ id: ID1, name: 'x', renewalPattern: 'monthly', remindDays: 3 }),
     )
-    expect(isMediaError(err) && err.kind).toBe('gone')
+    expect(isApiError(err) && err.kind).toBe('gone')
     expect(qc.getQueryData<Subscription[]>(key)).toEqual([row({ id: ID2 })])
     expect(calls.map((c) => c.method)).toEqual(['POST'])
 
@@ -172,7 +172,7 @@ describe.each(TYPES)('%s hooks', (type) => {
     await waitFor(() => expect(renew.result.current.data).toEqual([]))
     qc.setQueryData(key, [row()])
     const err2 = await failure(() => renewer.result.current.mutateAsync({ id: ID1, expectedExpiryDate: '2026-03-15' }))
-    expect(isMediaError(err2) && err2.kind).toBe('gone')
+    expect(isApiError(err2) && err2.kind).toBe('gone')
     await waitFor(() => expect(qc.getQueryData(key)).toEqual([]))
   })
 

@@ -27,6 +27,13 @@ export const BookIcon = ({ size }: { size?: number }) => (
     <path d="M4 21V5" />
   </Svg>
 )
+export const ShelfIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <rect x="4" y="4" width="4" height="16" rx="1" />
+    <rect x="10" y="4" width="4" height="16" rx="1" />
+    <path d="m16.5 5.5 3.5-.9 2 14.4-3.5.9z" />
+  </Svg>
+)
 export const HeartIcon = ({ on }: { on: boolean }) => (
   <Svg size={24}>
     <path fill={fill(on)} d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.600-7 10-7 10z" />
@@ -73,8 +80,8 @@ export const SearchIcon = ({ size }: { size?: number }) => (
     <path d="m20 20-4-4" />
   </Svg>
 )
-export const PlusIcon = () => (
-  <Svg size={28}>
+export const PlusIcon = ({ size = 28 }: { size?: number }) => (
+  <Svg size={size}>
     <path d="M12 5v14M5 12h14" />
   </Svg>
 )
@@ -158,5 +165,16 @@ export const KeyIcon = ({ size }: { size?: number }) => (
 export const BellIcon = ({ size }: { size?: number }) => (
   <Svg size={size}>
     <path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 21h4" />
+  </Svg>
+)
+export const ShareIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <path d="M12 3v12M8 7l4-4 4 4M7 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1" />
+  </Svg>
+)
+export const AddToHomeIcon = ({ size }: { size?: number }) => (
+  <Svg size={size}>
+    <rect x="3" y="3" width="18" height="18" rx="4" />
+    <path d="M12 8v8M8 12h8" />
   </Svg>
 )

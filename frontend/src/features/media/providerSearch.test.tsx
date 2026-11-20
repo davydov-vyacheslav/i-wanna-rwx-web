@@ -111,7 +111,7 @@ describe('provider search hooks', () => {
     expect(result.current.error).toBeNull()
   })
 
-  it('maps a failure to a MediaError', async () => {
+  it('maps a failure to a ApiError', async () => {
     const { api, wrapper } = setup()
     const { result } = renderHook(() => useSearchBooks('fail', 'open_library', api), { wrapper })
     await advance(1000)

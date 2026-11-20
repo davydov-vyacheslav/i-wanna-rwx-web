@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient, type QueryKey } from '@tanstack/react-query'
 import type { ApiClient } from '../../api/client'
-import { isMediaError } from './errors'
+import { isApiError } from '../../api/errors'
 import { createMediaRepository } from './repository'
 
 export const BOOKS_KEY = ['media', 'books'] as const
@@ -39,7 +39,7 @@ function remove(qc: QueryClient, key: Key, id: string) {
 
 /** A 404/410 means the cached row is stale: let the server list replace it. */
 export function refetchIfStale(qc: QueryClient, key: Key, error: unknown) {
-  if (isMediaError(error) && (error.kind === 'gone' || error.kind === 'not_found')) {
+  if (isApiError(error) && (error.kind === 'gone' || error.kind === 'not_found')) {
     void qc.invalidateQueries({ queryKey: key })
   }
 }

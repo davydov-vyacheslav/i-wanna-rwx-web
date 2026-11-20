@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ApiClient } from '../../api/client'
 import { ConfirmDialog } from '../../components/ConfirmDialog'
 import { Segments } from '../../components/Segments'
 import { Toast } from '../../components/Toast'
+import { useWide } from '../../components/useWide'
 import { t, type Locale, type MessageKey } from '../../i18n'
 import { format } from '../../i18n/format'
 import { countLabel, countText } from '../media/counts'
@@ -21,20 +22,8 @@ import type { ReminderType, Subscription } from './types'
 import type { RemindersState } from './listState'
 import { todayIn, urgencyOf } from './urgency'
 
-const WIDE = '(min-width: 768px)'
-const subscribeWide = (notify: () => void) => {
-  const query = window.matchMedia(WIDE)
-  query.addEventListener('change', notify)
-  return () => query.removeEventListener('change', notify)
-}
-
-/** From `md` up the list is a table: one list in the DOM at a time, so nothing is duplicated (no matchMedia, e.g. jsdom: cards). */
-function useWide(): boolean {
-  return useSyncExternalStore(
-    typeof window.matchMedia === 'function' ? subscribeWide : () => () => {},
-    () => typeof window.matchMedia === 'function' && window.matchMedia(WIDE).matches,
-  )
-}
+const NO_ROWS: readonly Subscription[] = []
+const noop = () => {}
 
 const SEGMENTS: readonly ReminderType[] = ['subscriptions', 'licenses']
 
@@ -121,10 +110,24 @@ function RemindersList({
     <section aria-busy={loading} className="text-ink px-4 pb-24">
       <div inert={filtering} aria-hidden={filtering || undefined}>
         <header className={wide ? 'pt-2 pb-4' : 'pt-2'}>
-          <div className="flex items-baseline justify-between gap-3">
+          <div className={`flex justify-between gap-3 ${wide ? 'min-h-11 items-center' : 'items-baseline'}`}>
             <h1 className="text-title font-bold">{t(locale, wide ? `reminders.${type}` : 'reminders.title')}</h1>
             {/* the count is about the filter, which the wide table does not have */}
-            {!wide && (
+            {wide ? (
+              !loading &&
+              !loadFailed &&
+              all.length > 0 && (
+                <button
+                  type="button"
+                  aria-label={t(locale, texts.add)}
+                  onClick={() => setAdding(true)}
+                  className="bg-accent text-on-accent text-input flex min-h-11 items-center gap-1 rounded-md px-4 font-semibold"
+                >
+                  <PlusIcon size={20} />
+                  {t(locale, 'media.add')}
+                </button>
+              )
+            ) : (
               <p aria-live="polite" className="text-body text-ink-2 font-medium">
                 {loading ? '' : countText(countLabel(rows.length, all.length), locale)}
               </p>
@@ -159,7 +162,9 @@ function RemindersList({
           </div>
         )}
 
-        {loading ? (
+        {loading && wide ? (
+          <RemindersTable rows={NO_ROWS} today={today} locale={locale} onOpen={noop} onDelete={noop} loading />
+        ) : loading ? (
           <ul role="status" aria-label={t(locale, 'reminders.loading')} className="flex flex-col gap-[10px]">
             {[0, 1, 2, 3].map((i) => (
               <li
@@ -236,12 +241,12 @@ function RemindersList({
           </ul>
         )}
 
-        {!loading && !loadFailed && all.length > 0 && (
+        {!wide && !loading && !loadFailed && all.length > 0 && (
           <button
             type="button"
             aria-label={t(locale, texts.add)}
             onClick={() => setAdding(true)}
-            className="bg-accent text-on-accent shadow-fab fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-20 md:right-[calc(max(0px,50vw-var(--sidebar-w)/2-var(--column-w)/2)+1rem)] md:bottom-6 flex size-14 items-center justify-center rounded-full active:scale-95"
+            className="bg-accent text-on-accent shadow-fab fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+5rem)] z-20 flex size-14 items-center justify-center rounded-full active:scale-95"
           >
             <PlusIcon />
           </button>

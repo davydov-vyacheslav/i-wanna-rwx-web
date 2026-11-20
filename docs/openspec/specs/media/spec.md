@@ -59,7 +59,7 @@ Each card SHALL have a heart (toggle favorite) and an eye (toggle `planned` and 
 - **THEN** status becomes `seen` and, under the default filter, the item leaves the list
 
 ### Requirement: Delete
-An item SHALL be deletable by trailing swipe, the card button or the detail sheet, always after a confirmation dialog that names the item and says the deletion cannot be undone (there is no Undo before Phase 5). The delete is sent only on confirm; the item leaves the list only when the server has answered successfully, and a failed delete keeps the item and shows an error toast. Cancel, Escape or a scrim tap send nothing. Deletion is a server tombstone: it is hidden from reads (GET of a tombstone is 404), deleting twice succeeds, and an update for a tombstoned id returns 410 and recreates nothing. There is no edit screen. Phase 5 may replace the dialog by an Undo toast.
+An item SHALL be deletable by trailing swipe, the card button or the detail sheet, always after a confirmation dialog that names the item and says the deletion cannot be undone (there is no Undo before the offline sync phase (10)). The delete is sent only on confirm; the item leaves the list only when the server has answered successfully, and a failed delete keeps the item and shows an error toast. Cancel, Escape or a scrim tap send nothing. Deletion is a server tombstone: it is hidden from reads (GET of a tombstone is 404), deleting twice succeeds, and an update for a tombstoned id returns 410 and recreates nothing. There is no edit screen. Phase 5 may replace the dialog by an Undo toast.
 
 #### Scenario: Confirmed delete
 - **WHEN** the user taps Delete (swipe, card or detail sheet) and confirms the dialog
@@ -103,11 +103,23 @@ Tapping the title/meta area of a card SHALL open the item detail even when the i
 - **THEN** a sheet shows the full text
 
 ### Requirement: Cover opens the source page
-Tapping the cover SHALL open the item's `externalLink` in a new tab when it is an https URL (the Open Library work page, the TMDb movie or tv page, or for a draft a web search of the title); a cover without an https link is not a link. There is no long-press or "Copy link" affordance. A missing cover shows a type-specific placeholder; covers may be hotlinked and cached by the service worker.
+Tapping the cover SHALL open the item's `externalLink` in a new tab when it is an https URL (the Open Library work page, the TMDb movie or tv page, or for a draft a web search of the title); a cover without an https link is not a link. There is no long-press or "Copy link" affordance. An item without a cover, or whose cover image fails to load, SHALL show the artwork placeholder of its type (book or movie, the iOS app's `draft_book` / `draft_movie` images; the dark variant under `prefers-color-scheme: dark`, 1x to 3x by device density), decorative for assistive technology. Covers may be hotlinked from `covers.openlibrary.org` and `image.tmdb.org` and are cached by the service worker (see `platform`).
 
 #### Scenario: Open source
 - **WHEN** the cover of an item whose `externalLink` is `https://www.themoviedb.org/tv/1396` is tapped
 - **THEN** that page opens
+
+#### Scenario: Cover without source link
+- **WHEN** an item has a cover but no https `externalLink`
+- **THEN** the cover is shown and is not a link
+
+#### Scenario: No cover
+- **WHEN** a book has no cover URL
+- **THEN** the book placeholder is shown, in its dark variant in dark mode
+
+#### Scenario: Broken cover
+- **WHEN** a movie poster fails to load
+- **THEN** the movie placeholder replaces it
 
 ### Requirement: Card content
 A card SHALL show cover, type icon, title (2 lines), year or an em dash, star and rating to one decimal ("N/A" when 0), author (or "No author"), TV extra meta, the two toggle buttons, and the status and source badges.
@@ -242,6 +254,6 @@ Filter state per list and sort per list SHALL be stored on the device only, keye
 - There is no media-specific export feature (the iOS JSON export is removed); the account data export lives in `identity`.
 - The item detail opens on tap even without a description.
 - A URL no source recognizes is 400 `validation` on `sourceUrl` (owner decision 2026-11-19); there is no `unsupported_source` code.
-- Delete always asks for confirmation and waits for the server (owner decision; no Undo before Phase 5).
+- Delete always asks for confirmation and waits for the server (owner decision; no Undo before the offline sync phase (10)).
 - The big open area of a card shows no focus indicator (owner decision).
 - Wide screens (>= 768px) use a sidebar and centered dialogs (owner decision 2026-11-19).

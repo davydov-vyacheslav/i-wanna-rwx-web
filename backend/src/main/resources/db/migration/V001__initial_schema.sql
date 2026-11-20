@@ -60,6 +60,7 @@ CREATE TABLE books (
   CONSTRAINT valid_book_source CHECK (source IN ('draft', 'open_library')),
   CONSTRAINT valid_book_external_id_length CHECK (char_length(external_id) BETWEEN 1 AND 1024),
   CONSTRAINT valid_book_external_link_length CHECK (char_length(external_link) <= 4096),
+  CONSTRAINT valid_book_cover_url_length CHECK (char_length(cover_url) <= 4096),
   CONSTRAINT valid_open_library_id CHECK (source <> 'open_library' OR external_id ~ '^OL[0-9]{1,12}W$')
 );
 
@@ -104,6 +105,7 @@ CREATE TABLE movies (
   CONSTRAINT valid_movie_source CHECK (source IN ('draft', 'tmdb')),
   CONSTRAINT valid_movie_external_id_length CHECK (char_length(external_id) BETWEEN 1 AND 1024),
   CONSTRAINT valid_movie_external_link_length CHECK (char_length(external_link) <= 4096),
+  CONSTRAINT valid_movie_poster_url_length CHECK (char_length(poster_url) <= 4096),
   CONSTRAINT valid_tmdb_id CHECK (source <> 'tmdb' OR external_id ~ '^[1-9][0-9]{0,9}$'),
   CONSTRAINT valid_draft_movie_type CHECK (source <> 'draft' OR type = 'movie')
 );

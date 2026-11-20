@@ -3,7 +3,7 @@ import type { ApiClient } from '../../api/client'
 import { Sheet } from '../../components/Sheet'
 import { Spinner } from '../../components/Spinner'
 import { t, type Locale, type MessageKey } from '../../i18n'
-import { isMediaError } from '../media/errors'
+import { isApiError } from '../../api/errors'
 import { errorMessage } from '../media/errorMessage'
 import { CheckIcon, MinusIcon, PlusIcon } from '../media/icons'
 import { daysText, PATTERNS } from './ReminderCard'
@@ -200,7 +200,7 @@ export function ReminderSheet({
       }
       onClose()
     } catch (e) {
-      const named = isMediaError(e) ? e.fieldErrors.filter((f) => f.field in SERVER_FIELDS) : []
+      const named = isApiError(e) ? e.fieldErrors.filter((f) => f.field in SERVER_FIELDS) : []
       if (named.length > 0) {
         setServerErrors(Object.fromEntries(named.map((f) => [SERVER_FIELDS[f.field], f.message])))
       } else {

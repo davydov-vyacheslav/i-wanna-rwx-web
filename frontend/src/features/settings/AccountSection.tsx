@@ -50,7 +50,7 @@ export function AccountSection({ me, api, locale }: { me: Me; api?: ApiClient; l
           type="button"
           disabled={logout.isPending}
           onClick={() => logout.mutate()}
-          className="text-ink text-input min-h-11 w-full px-4 py-2 text-center active:opacity-70 disabled:opacity-60"
+          className="text-ink text-input min-h-11 w-full px-4 py-2 text-center focus-visible:outline-offset-[-2px] active:opacity-70 disabled:opacity-60"
         >
           {t(locale, 'settings.signOut')}
         </button>

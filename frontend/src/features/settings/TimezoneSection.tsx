@@ -75,7 +75,7 @@ export function TimezoneRows({
             type="button"
             disabled={update.isPending}
             onClick={() => save(device)}
-            className="text-accent text-input min-h-11 w-full px-4 py-2 text-center font-semibold active:opacity-70 disabled:opacity-60"
+            className="text-accent text-input min-h-11 w-full px-4 py-2 text-center focus-visible:outline-offset-[-2px] font-semibold active:opacity-70 disabled:opacity-60"
           >
             {format(t(locale, 'settings.timezoneUseDevice'), { zone: zoneLabel(device) })}
           </button>
@@ -89,7 +89,7 @@ export function TimezoneRows({
               markTimeZoneChosen(userId)
               setKept(true)
             }}
-            className="text-accent text-input min-h-11 w-full px-4 py-2 text-center font-semibold active:opacity-70"
+            className="text-accent text-input min-h-11 w-full px-4 py-2 text-center focus-visible:outline-offset-[-2px] font-semibold active:opacity-70"
           >
             {t(locale, 'settings.timezoneKeepUtc')}
           </button>

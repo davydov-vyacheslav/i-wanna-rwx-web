@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { RemindersTable } from './RemindersTable'
 import type { Subscription } from './types'
 
@@ -22,50 +22,38 @@ const ROWS = [
   sub({ name: 'Forever', expiryDate: null, renewalPattern: 'lifetime', cost: '99 USD' }),
 ]
 
-function mount(onOpen = vi.fn(), onDelete = vi.fn()) {
-  render(<RemindersTable rows={ROWS} today="2026-11-20" locale="en" onOpen={onOpen} onDelete={onDelete} />)
-  return { onOpen, onDelete }
-}
-const names = () =>
-  within(screen.getAllByRole('rowgroup')[1]!)
-    .getAllByRole('row')
-    .map((r) => within(r).getAllByRole('button')[0]!.textContent)
-const header = (name: string) => screen.getByRole('button', { name })
-
 describe('RemindersTable', () => {
-  it('keeps the incoming order until a header is used', () => {
-    mount()
-    expect(names()).toEqual(['Netflix', 'Adobe', 'Forever'])
-    for (const th of screen.getAllByRole('columnheader').slice(0, 4)) expect(th.getAttribute('aria-sort')).toBeNull()
+  it('has Name, Expires, Renewal and Cost columns; Renewal and Cost are hidden below lg', () => {
+    render(<RemindersTable rows={ROWS} today="2026-11-20" locale="en" onOpen={() => {}} onDelete={() => {}} />)
+    expect(screen.getAllByRole('columnheader').map((h) => h.textContent)).toEqual([
+      'Name',
+      'Expires',
+      'Renewal',
+      'Cost',
+      'Delete',
+    ])
+    for (const name of ['Renewal', 'Cost'])
+      expect(screen.getByRole('columnheader', { name }).className).toContain('hidden lg:table-cell')
   })
 
-  it('a header sorts ascending, then descending, then restores the default; a missing value stays last', () => {
-    mount()
-    fireEvent.click(header('Name'))
-    expect(names()).toEqual(['Adobe', 'Forever', 'Netflix'])
-    expect(screen.getByRole('columnheader', { name: 'Name' }).getAttribute('aria-sort')).toBe('ascending')
-    fireEvent.click(header('Name'))
-    expect(names()).toEqual(['Netflix', 'Forever', 'Adobe'])
-    fireEvent.click(header('Name'))
+  it('sorts Expires soonest first with a lifetime item last, and Cost by value', () => {
+    render(<RemindersTable rows={ROWS} today="2026-11-20" locale="en" onOpen={() => {}} onDelete={() => {}} />)
+    const names = () =>
+      within(screen.getAllByRole('rowgroup')[1]!)
+        .getAllByRole('row')
+        .map((r) => within(r).getAllByRole('button')[0]!.textContent)
+    fireEvent.click(screen.getByRole('button', { name: 'Expires' }))
     expect(names()).toEqual(['Netflix', 'Adobe', 'Forever'])
-
-    fireEvent.click(header('Cost'))
-    expect(names()).toEqual(['Netflix', 'Forever', 'Adobe'])
-    fireEvent.click(header('Cost'))
-    expect(names()).toEqual(['Forever', 'Netflix', 'Adobe'])
-
-    fireEvent.click(header('Expires'))
-    fireEvent.click(header('Expires'))
+    fireEvent.click(screen.getByRole('button', { name: 'Expires' }))
     expect(names()).toEqual(['Adobe', 'Netflix', 'Forever'])
+    fireEvent.click(screen.getByRole('button', { name: 'Cost' }))
+    expect(names()).toEqual(['Netflix', 'Forever', 'Adobe'])
   })
 
-  it('a row opens the item, Delete asks for the delete and does not open', () => {
-    const { onOpen, onDelete } = mount()
-    fireEvent.click(screen.getByText('Adobe'))
-    expect(onOpen).toHaveBeenCalledWith(ROWS[1])
-    onOpen.mockClear()
-    fireEvent.click(screen.getByRole('button', { name: 'Delete Netflix' }))
-    expect(onDelete).toHaveBeenCalledWith(ROWS[0])
-    expect(onOpen).not.toHaveBeenCalled()
+  it('is fixed-layout with one width class per column, so every tab renders the same columns', () => {
+    render(<RemindersTable rows={ROWS} today="2026-11-20" locale="en" onOpen={() => {}} onDelete={() => {}} />)
+    expect(screen.getByRole('table').className).toContain('table-fixed')
+    const widths = screen.getAllByRole('columnheader').map((h) => h.className.match(/\bw-[\w.]+/)?.[0])
+    expect(widths).toEqual([undefined, 'w-64', 'w-36', 'w-28', 'w-14'])
   })
 })

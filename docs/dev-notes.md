@@ -11,6 +11,10 @@ Local setup and manual smoke checks that automated tests cannot do.
 
 V001 is edited in place until the first deploy. After such an edit the local DB must be recreated, or Flyway rejects the checksum: `docker compose -f deploy/docker/docker-compose.yml down -v`, then `up --build`.
 
+## Dev preview sources
+
+With the `dev` profile only (the compose default), `datasource/internal/DevPreviewSources.java` adds made-up sources (books: Hardcover, Library of Congress, Google Books; movies: OMDb, Trakt, Kinopoisk) to Settings > Sources so the section can be tried with several rows. Their default and key state lives in memory per user and resets on restart; any non-blank key is accepted, nothing is stored or sent. The bean does not exist in any other profile.
+
 ## Dev dataset
 
 After signing in once, fill the account with varied books, movies, subscriptions and licenses (all urgency states, lifetime, long and Cyrillic titles, drafts and source items):
@@ -41,6 +45,30 @@ DB access: `docker compose -f deploy/docker/docker-compose.yml exec postgres psq
 4. Check light and dark (system setting), a narrow window (about 375 px) and a long ru/uk label. The default-source radio is hidden while a type has one source; to see it, temporarily register a second source.
 5. `npm run dev` (5173) serves only the signed-out login page: the OAuth callback lands on :8080.
 
-## Postponed to the full-deployment / PWA phase
+## PWA: trying it locally (desktop Chrome or Edge)
 
-iPhone / installed PWA (OAuth redirect return, safe areas, dark mode, offline "Can't reach the server"), ru/uk locale check. Tracked in `docs/TODO.md`.
+The service worker is off in `npm run dev`; it exists only in a production build, so use the compose stack (the Spring jar serves the built frontend) at `http://localhost:8080` (`localhost` counts as a secure context).
+
+1. `docker compose -f deploy/docker/docker-compose.yml up --build -d`, open `http://localhost:8080`, sign in with GitHub (the sign-in page is the shell as a decoration: dimmed sidebar, large icon, one line, the GitHub button).
+2. DevTools > Application: Manifest (name RWX, three icons, no warnings), Service Workers (`sw.js` activated), Cache Storage (precache plus `covers-v1` once covers have loaded).
+3. Install: the install icon in the address bar, or Settings > App > "Install app" (the row exists only while the browser offers the install and the app is not installed; it disappears once installed). The installed window must open standalone.
+4. Offline: DevTools > Network > Offline, reload. The shell opens and shows "Can't reach the server"; images seen before still show, new ones show the book or movie placeholder. Navigation to `/api/...`, `/actuator/...` and `/oauth2/...` is never answered by the worker.
+5. Update: change anything in the frontend, `docker compose ... up --build -d` again, resume or reload the open tab: the toast "A new version is available" appears (the check runs on focus and when the network returns, at most every 30 minutes; DevTools > Service Workers "Update" forces it); Reload applies it. "Update on reload" and "Clear site data" in DevTools reset the state.
+6. Regenerate the icons (ImageMagick 7): `frontend/scripts/make-icons.sh "<path to AppIcon 1.png>"` (the artwork is in the iOS project, `Assets.xcassets/AppIcon.appiconset`); it writes the five PNGs in `frontend/public` and checks their corners.
+
+## After the first deploy: iPhone checks
+
+Owner checks on a real iPhone once there is an HTTPS deployment (details and reasoning: `docs/openspec/changes/archive/pwa-install/design.md` section 10; the leftovers are tracked in `docs/TODO.md`).
+
+1. Add to Home Screen from Safari: the icon is the full-bleed artwork, no black corners, label "RWX"; the app launches standalone, no Safari chrome.
+2. Sign-in inside the standalone app: GitHub OAuth opens and returns, and the user is signed in in the PWA. This is the riskiest check: iOS may hand the cross-origin navigation to an in-app browser whose cookies differ from the app's.
+3. The session persists after killing and relaunching the app, and after a day.
+4. Dark mode: the dark placeholder and the dark `theme-color`; safe-area gutters (status bar, home indicator); ru and uk.
+5. Airplane mode, launch: the shell appears from the precache (no "Safari cannot open the page") and shows "Can't reach the server"; covers seen before still show.
+6. Update: deploy a second build, resume the app: the toast appears within one resume (or after the 30-minute throttle), Reload applies it; ignoring it, a cold launch has the new version.
+7. Settings in standalone: no App row; in Safari (not installed) the "Add to Home Screen" row opens the three steps, whose menu names must match the real iOS wording in en, ru and uk.
+8. Add to Home Screen from Chrome or Edge on iOS (16.4+) works through the same steps.
+9. Covers: Open Library and TMDb images load under the CSP (no blocked images in the Web Inspector console) and come from the cache on the second launch.
+10. Storage eviction: after a week unused the app still launches.
+
+Also from earlier phases: the media screens (safe area at the tab bar and the sticky search row, the add sheet with the keyboard, swipe-to-delete, nested sheets with VoiceOver), the reminders screens (date wheel, 320 px widths in ru and uk, dark contrast of the selected segment) and the account data export download (it may open a share sheet instead of saving).

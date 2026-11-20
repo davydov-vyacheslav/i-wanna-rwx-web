@@ -1,6 +1,6 @@
 import { useId, useRef, type ReactNode } from 'react'
 
-/** Grouped-list row with the label on the left and a native select on the right (value in secondary ink, chevron). */
+/** Grouped-list row with the label on the left and a native select on the right (value in secondary ink, chevron; the same on every width). */
 export function SelectRow({
   label,
   value,
@@ -15,8 +15,8 @@ export function SelectRow({
   children: ReactNode
 }) {
   const labelId = useId()
-  // Chrome keeps focus on a select after a mouse pick: drop it then (the keyboard keeps it). Safari also paints a stray
-  // outline when the list is dismissed without a pick, so the select has none (focus-visible:outline-none).
+  // Chrome keeps focus on a select after a mouse pick: drop it then (the keyboard keeps it). The select has no outline:
+  // Chrome and Safari paint an orange one after a mouse pick or a dismissed list.
   const pointer = useRef(false)
   return (
     <div className="flex min-h-12 items-center justify-between gap-3 px-4">
@@ -34,7 +34,7 @@ export function SelectRow({
             if (pointer.current) e.target.blur()
           }}
           onBlur={() => (pointer.current = false)}
-          className="text-input text-ink-2 h-11 min-w-0 cursor-pointer appearance-none truncate bg-transparent pr-6 pl-2 [text-align-last:right] focus-visible:outline-none disabled:cursor-default disabled:opacity-60"
+          className="text-input text-ink-2 h-11 min-w-0 cursor-pointer appearance-none truncate bg-transparent pr-6 pl-2 [text-align-last:right] outline-none disabled:cursor-default disabled:opacity-60"
         >
           {children}
         </select>

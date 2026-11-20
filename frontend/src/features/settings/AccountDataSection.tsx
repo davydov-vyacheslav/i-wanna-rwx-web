@@ -16,7 +16,7 @@ export function AccountDataSection({ api, locale }: { api?: ApiClient; locale: L
         disabled={exporter.isPending}
         aria-busy={exporter.isPending || undefined}
         onClick={() => exporter.mutate()}
-        className="text-accent text-input min-h-11 w-full px-4 py-2 text-center font-semibold active:opacity-70 disabled:opacity-60"
+        className="text-accent text-input min-h-11 w-full px-4 py-2 text-center focus-visible:outline-offset-[-2px] font-semibold active:opacity-70 disabled:opacity-60"
       >
         <span className="inline-flex items-center gap-2">
           {exporter.isPending && <Spinner />}
@@ -32,7 +32,7 @@ export function AccountDataSection({ api, locale }: { api?: ApiClient; locale: L
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="text-danger text-input min-h-11 w-full px-4 py-2 text-center font-bold active:opacity-70"
+          className="text-danger text-input min-h-11 w-full px-4 py-2 text-center focus-visible:outline-offset-[-2px] font-bold active:opacity-70"
         >
           {t(locale, 'settings.delete')}
         </button>

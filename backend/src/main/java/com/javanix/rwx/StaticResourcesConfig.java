@@ -3,6 +3,11 @@ package com.javanix.rwx;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import org.springframework.boot.web.server.MimeMappings;
+import org.springframework.boot.web.server.WebServerFactoryCustomizer;
+import org.springframework.boot.web.server.servlet.ConfigurableServletWebServerFactory;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -17,6 +22,13 @@ import org.springframework.web.servlet.resource.PathResourceResolver;
  */
 @Configuration(proxyBeanMethods = false)
 class StaticResourcesConfig implements WebMvcConfigurer {
+
+    // Boot 4 has no server.servlet.mime-mappings property and Tomcat does not know .webmanifest, which the
+    // resource handler would then serve as application/octet-stream.
+    @Bean
+    WebServerFactoryCustomizer<ConfigurableServletWebServerFactory> webManifestMimeType() {
+        return factory -> factory.addMimeMappings(new MimeMappings(Map.of("webmanifest", "application/manifest+json")));
+    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

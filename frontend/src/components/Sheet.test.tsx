@@ -111,3 +111,23 @@ describe('focus ring after closing a sheet', () => {
     expect(ringHidden(opener)).toBe(false)
   })
 })
+
+describe('Sheet title', () => {
+  it('wraps by default and stays on one line with the full text in the tooltip when oneLine', () => {
+    const { rerender } = render(
+      <Sheet title="A very long name" closeLabel="Close" onClose={() => {}}>
+        x
+      </Sheet>,
+    )
+    const h = () => screen.getByRole('heading', { level: 2 })
+    expect(h().className).not.toContain('truncate')
+    expect(h().hasAttribute('title')).toBe(false)
+    rerender(
+      <Sheet title="A very long name" oneLine closeLabel="Close" onClose={() => {}}>
+        x
+      </Sheet>,
+    )
+    expect(h().className).toContain('truncate')
+    expect(h().getAttribute('title')).toBe('A very long name')
+  })
+})

@@ -1,6 +1,6 @@
 # Change: offline-sync
 
-Phase: Offline/PWA (roadmap phase 5). It is no longer part of the next-in-order sequence (`identity-github-oauth`, `media-core`, `media-search`); `media-core` and `media-search` ship online-first and leave a thin `repository.ts` seam for this change.
+Phase: Offline sync (roadmap phase 10, after the first deploy; owner decision 2026-11-20, it used to be part of the Offline/PWA phase 5). After the first deploy migrations are append-only: `change_seq`, its trigger and `applied_mutations` arrive as a new migration, not in V001. The architect re-checks this change against the code of Phases 3 and 4 before starting (stale points: `notifyAt` is not stored, delete is confirm-and-wait). It is no longer part of the next-in-order sequence (`identity-github-oauth`, `media-core`, `media-search`); `media-core` and `media-search` ship online-first and leave a thin `repository.ts` seam for this change.
 
 ## Why
 The PWA must work offline on iOS (no Background Sync, evictable IndexedDB). Server is authoritative; the client keeps a cache and an outbox of mutations.

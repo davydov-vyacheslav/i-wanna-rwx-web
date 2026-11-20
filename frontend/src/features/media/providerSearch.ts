@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { client as defaultClient, type ApiClient } from '../../api/client'
 import type { components } from '../../api/schema'
 import { useDataSources } from '../settings/useDataSources'
-import { callApi } from './errors'
+import { callApi } from '../../api/errors'
 import { MAX_DRAFT_CODE_POINTS } from './sourceUrl'
 
 export type BookSearchHit = components['schemas']['BookSearchHit']

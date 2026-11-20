@@ -48,15 +48,70 @@ describe('AppShell', () => {
       sidebar()
         .getAllByRole('button')
         .map((b) => b.textContent),
-    ).toEqual(['Books', 'Movies', 'Reminders', 'Subscriptions', 'Licenses', 'Settings'])
+    ).toEqual(['Media', 'Books', 'Movies', 'Reminders', 'Subscriptions', 'Licenses', 'Settings'])
     expect(
       tabs()
         .getAllByRole('button')
         .map((b) => b.textContent),
     ).toEqual(['Books', 'Movies', 'Reminders', 'Settings'])
-    for (const nav of [sidebar(), tabs()])
-      expect(nav.getByRole('button', { name: 'Books' }).getAttribute('aria-current')).toBe('page')
+    expect(tabs().getByRole('button', { name: 'Books' }).getAttribute('aria-current')).toBe('page')
+    // a parent with sub-items is highlighted but only the leaf is announced as current
+    expect(sidebar().getByRole('button', { name: 'Media' }).hasAttribute('aria-current')).toBe(false)
+    expect(sidebar().getByRole('button', { name: 'Books' }).getAttribute('aria-current')).toBe('true')
     await screen.findByRole('heading', { name: 'Books' })
+  })
+
+  it('sidebar sub-items are 44px targets and the media group is a labelled list', () => {
+    mount()
+    const list = sidebar().getByRole('list', { name: 'Media' })
+    for (const b of [
+      ...within(list).getAllByRole('button'),
+      ...sidebar().getAllByRole('button', { name: /^(Subscriptions|Licenses)$/ }),
+    ])
+      expect(b.className).toContain('min-h-11')
+  })
+
+  it('the Media parent opens the last used media tab, Books by default', async () => {
+    mount()
+    fireEvent.click(sidebar().getByRole('button', { name: 'Movies' }))
+    await screen.findByRole('heading', { name: 'Movies', level: 1 })
+    fireEvent.click(sidebar().getByRole('button', { name: 'Reminders' }))
+    expect(window.location.hash).toBe('#/reminders/subscriptions')
+    expect(sidebar().getByRole('button', { name: 'Media' }).hasAttribute('aria-current')).toBe(false)
+    fireEvent.click(sidebar().getByRole('button', { name: 'Media' }))
+    expect(window.location.hash).toBe('#/movies')
+    expect(sidebar().getByRole('button', { name: 'Media' }).hasAttribute('aria-current')).toBe(false)
+    expect(sidebar().getByRole('button', { name: 'Movies' }).getAttribute('aria-current')).toBe('true')
+    fireEvent.click(sidebar().getByRole('button', { name: 'Settings' }))
+    fireEvent.click(sidebar().getByRole('button', { name: 'Media' }))
+    expect(window.location.hash).toBe('#/movies')
+  })
+
+  it('the Media parent opens Books when no media tab was used', () => {
+    window.history.replaceState(null, '', '/#/settings')
+    mount()
+    fireEvent.click(sidebar().getByRole('button', { name: 'Media' }))
+    expect(window.location.hash).toBe('#/books')
+  })
+
+  it('a Reminders sub-item opens its segment from another tab', async () => {
+    mount()
+    fireEvent.click(sidebar().getByRole('button', { name: 'Licenses' }))
+    expect(window.location.hash).toBe('#/reminders/licenses')
+    expect(sidebar().getByRole('button', { name: 'Licenses' }).getAttribute('aria-current')).toBe('true')
+    expect(sidebar().getByRole('button', { name: 'Subscriptions' }).hasAttribute('aria-current')).toBe(false)
+    expect(sidebar().getByRole('button', { name: 'Reminders' }).hasAttribute('aria-current')).toBe(false)
+    await screen.findByRole('heading', { name: 'Reminders', level: 1 })
+  })
+
+  it('table tabs widen the column to 64rem from md, Settings to 56rem', async () => {
+    mount()
+    const cap = screen.getByRole('main').firstElementChild as HTMLElement
+    expect(cap.className).toContain('md:[--column-w:64rem]')
+    fireEvent.click(tabs().getByRole('button', { name: 'Settings' }))
+    await screen.findByRole('heading', { name: 'Settings', level: 1 })
+    expect(cap.className).toContain('md:[--column-w:56rem]')
+    expect(cap.className).not.toContain('64rem')
   })
 
   it('the sidebar navigates by hash and highlights the current entry in both navs', async () => {
@@ -65,10 +120,10 @@ describe('AppShell', () => {
     await screen.findByRole('heading', { name: 'Movies', level: 1 })
     expect(window.location.hash).toBe('#/movies')
     expect(localStorage.getItem('rwx.tab.u1')).toBe('movies')
-    for (const nav of [sidebar(), tabs()]) {
-      expect(nav.getByRole('button', { name: 'Movies' }).getAttribute('aria-current')).toBe('page')
-      expect(nav.getByRole('button', { name: 'Books' }).hasAttribute('aria-current')).toBe(false)
-    }
+    expect(tabs().getByRole('button', { name: 'Movies' }).getAttribute('aria-current')).toBe('page')
+    expect(tabs().getByRole('button', { name: 'Books' }).hasAttribute('aria-current')).toBe(false)
+    expect(sidebar().getByRole('button', { name: 'Books' }).hasAttribute('aria-current')).toBe(false)
+    expect(sidebar().getByRole('button', { name: 'Movies' }).getAttribute('aria-current')).toBe('true')
     expect(sidebar().getByRole('button', { name: 'Movies' }).className).toContain('text-accent')
   })
 
@@ -166,7 +221,7 @@ describe('AppShell', () => {
     const [side, bottom] = screen.getAllByRole('navigation').map((nav) => within(nav))
     const labels = (nav: ReturnType<typeof within>) => nav.getAllByRole('button').map((b: HTMLElement) => b.textContent)
     expect(labels(bottom!)).toEqual(['Книги', 'Фільми', 'Нагадування', 'Налаштування'])
-    expect(labels(side!)).toEqual(['Книги', 'Фільми', 'Нагадування', 'Підписки', 'Ліцензії', 'Налаштування'])
+    expect(labels(side!)).toEqual(['Медіа', 'Книги', 'Фільми', 'Нагадування', 'Підписки', 'Ліцензії', 'Налаштування'])
   })
 
   it('the tab bar sits in the safe area (tab target size is a ux-review item: jsdom has no layout)', () => {
@@ -242,5 +297,36 @@ describe('AppShell', () => {
     expect(region.scrollTop).toBe(120)
     fireEvent.click(tabs().getByRole('button', { name: 'Movies' }))
     expect(region.scrollTop).toBe(40)
+  })
+})
+
+describe('update toast', () => {
+  it('shows Reload on a waiting worker and calls reload', async () => {
+    vi.resetModules()
+    const reload = vi.fn()
+    vi.doMock('../../pwa/useServiceWorkerUpdate', () => ({
+      useServiceWorkerUpdate: () => ({ updateReady: true, reload }),
+    }))
+    const { AppShell: Shell } = await import('./AppShell')
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Shell
+          me={me}
+          locale="en"
+          api={createApiClient({ baseUrl: 'http://localhost', fetch: () => Promise.resolve(json([])) })}
+        />
+      </QueryClientProvider>,
+    )
+    expect(screen.getByText(t('en', 'app.update'))).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: t('en', 'app.update.reload') }))
+    expect(reload).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: t('en', 'media.toast.dismiss') }))
+    expect(screen.queryByText(t('en', 'app.update'))).toBeNull()
+    vi.doUnmock('../../pwa/useServiceWorkerUpdate')
+  })
+
+  it('shows no toast without a waiting worker', () => {
+    mount()
+    expect(screen.queryByText(t('en', 'app.update'))).toBeNull()
   })
 })

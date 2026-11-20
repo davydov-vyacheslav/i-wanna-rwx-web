@@ -1,6 +1,6 @@
 import { client as defaultClient, type ApiClient } from '../../api/client'
 import type { components } from '../../api/schema'
-import { call, callApi, errorFromResponse } from '../media/errors'
+import { call, callApi, errorFromResponse } from '../../api/errors'
 import type { ReminderType } from './types'
 
 type Schemas = components['schemas']
@@ -27,7 +27,7 @@ const CREATE_TIMEOUT_MS = 15_000
 
 /**
  * The data seam for subscriptions and licenses: online only, every call goes through the shared client; failures throw
- * `MediaError` (the shared typed API error); nothing is queued or cached here. The two resources have identical paths and
+ * `ApiError` (the shared typed API error); nothing is queued or cached here. The two resources have identical paths and
  * bodies apart from the license key, so one implementation serves both: the path is built from the type and narrowed
  * once to the subscription path for the client's typing.
  */
